@@ -5,23 +5,29 @@ import {
   loadStates,
   loadCounties,
   loadNationalParks,
+  loadNationalMonuments,
+  loadNationalForests,
+  loadWildernessAreas,
+  loadStateParks,
+  loadRecreationAreas,
+  loadConservationAreas,
   loadGeoJSON,
-  generateSampleZipCodes,
 } from '../utils/dataLoader';
 import { FilterPanel } from './FilterPanel';
 import { ColorRulesPanel } from './ColorRulesPanel';
 import { StylePanel } from './StylePanel';
 
+// Layer options matching the BTME map
 const LAYER_TYPE_OPTIONS: { value: LayerType; label: string }[] = [
   { value: 'state', label: 'State Boundaries' },
   { value: 'county', label: 'Counties' },
-  { value: 'zipcode', label: 'ZIP Codes' },
-  { value: 'census_tract', label: 'Census Tracts' },
   { value: 'national_park', label: 'National Parks' },
+  { value: 'national_monument', label: 'National Monuments' },
   { value: 'national_forest', label: 'National Forests' },
-  { value: 'blm_land', label: 'BLM Land' },
   { value: 'wilderness', label: 'Wilderness Areas' },
-  { value: 'tribal_land', label: 'Tribal Lands' },
+  { value: 'state_park', label: 'State Parks' },
+  { value: 'recreation_area', label: 'Recreation Areas' },
+  { value: 'conservation_area', label: 'Conservation Areas' },
   { value: 'custom', label: 'Custom GeoJSON' },
 ];
 
@@ -184,9 +190,23 @@ export function LayerPanel() {
         case 'national_park':
           data = await loadNationalParks();
           break;
-        case 'zipcode':
-          // Use sample data for demo
-          data = generateSampleZipCodes(200);
+        case 'national_monument':
+          data = await loadNationalMonuments();
+          break;
+        case 'national_forest':
+          data = await loadNationalForests();
+          break;
+        case 'wilderness':
+          data = await loadWildernessAreas();
+          break;
+        case 'state_park':
+          data = await loadStateParks();
+          break;
+        case 'recreation_area':
+          data = await loadRecreationAreas();
+          break;
+        case 'conservation_area':
+          data = await loadConservationAreas();
           break;
         case 'custom':
           if (customFile) {
@@ -198,9 +218,7 @@ export function LayerPanel() {
           }
           break;
         default:
-          // Generate sample data for other types
-          data = generateSampleZipCodes(100);
-          break;
+          throw new Error(`Unknown layer type: ${newLayerType}`);
       }
 
       setLayerData(layerId, data);

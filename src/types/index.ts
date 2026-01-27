@@ -27,15 +27,15 @@ export interface ColorRule {
 }
 
 export type LayerType =
-  | 'zipcode'
-  | 'county'
   | 'state'
+  | 'county'
   | 'national_park'
+  | 'national_monument'
   | 'national_forest'
-  | 'blm_land'
-  | 'census_tract'
-  | 'tribal_land'
   | 'wilderness'
+  | 'state_park'
+  | 'recreation_area'
+  | 'conservation_area'
   | 'custom';
 
 export interface GeoLayer {
