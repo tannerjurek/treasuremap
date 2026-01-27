@@ -6,9 +6,8 @@ const DATA_SOURCES = {
   // Census Bureau TIGER/Line Shapefiles (converted to GeoJSON)
   states: 'https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json',
 
-  // Alternative sources for different geography types
-  counties: (state: string) =>
-    `https://raw.githubusercontent.com/deldersveld/topojson/master/countries/us-states/${state}-counties.json`,
+  // US Counties GeoJSON
+  counties: 'https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json',
 
   // National Park Service boundaries
   nationalParks: 'https://services1.arcgis.com/fBc8EJBxQRMcHlei/arcgis/rest/services/NPS_Land_Resources_Division_Boundary_and_Tract_Data_Service/FeatureServer/2/query?outFields=*&where=1%3D1&f=geojson',
@@ -87,6 +86,30 @@ export const loadStates = async (): Promise<FeatureCollection> => {
   const data = await response.json();
   const westernData = filterToWesternUS(data);
   return addFeatureIds(westernData, 'state');
+};
+
+// Western US state FIPS codes for filtering counties
+const WESTERN_STATE_FIPS = ['04', '06', '08', '16', '30', '32', '35', '41', '49', '53', '56'];
+// AZ, CA, CO, ID, MT, NV, NM, OR, UT, WA, WY
+
+// Fetch and process county boundaries
+export const loadCounties = async (): Promise<FeatureCollection> => {
+  const response = await fetch(DATA_SOURCES.counties);
+  if (!response.ok) throw new Error('Failed to load county boundaries');
+
+  const data = await response.json();
+
+  // Filter to western US states using FIPS codes
+  const westernCounties: FeatureCollection = {
+    type: 'FeatureCollection',
+    features: data.features.filter((feature: Feature) => {
+      const fips = feature.id || feature.properties?.GEO_ID || '';
+      const stateFips = String(fips).substring(0, 2);
+      return WESTERN_STATE_FIPS.includes(stateFips);
+    }),
+  };
+
+  return addFeatureIds(westernCounties, 'county');
 };
 
 // Fetch and process national parks

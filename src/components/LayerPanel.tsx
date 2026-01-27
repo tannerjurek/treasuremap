@@ -3,6 +3,7 @@ import { useMapStore } from '../store/mapStore';
 import type { LayerType, GeoLayer } from '../types';
 import {
   loadStates,
+  loadCounties,
   loadNationalParks,
   loadGeoJSON,
   generateSampleZipCodes,
@@ -176,6 +177,9 @@ export function LayerPanel() {
       switch (newLayerType) {
         case 'state':
           data = await loadStates();
+          break;
+        case 'county':
+          data = await loadCounties();
           break;
         case 'national_park':
           data = await loadNationalParks();
