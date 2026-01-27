@@ -77,6 +77,46 @@ export interface AppState {
   searchQuery: string;
 }
 
+// BTME Hunt-specific types
+export interface BTMEFilters {
+  maxElevation: number | null;  // Filter areas above this elevation (feet)
+  stableLandOnly: boolean;      // Only show National Parks & Wilderness
+  showSearchedAreas: boolean;   // Show/hide areas marked as searched
+  showEliminatedAreas: boolean; // Show/hide areas marked as eliminated
+  clipToBTMEBounds: boolean;    // Only show within BTME map bounds
+}
+
+export interface SearchedArea {
+  id: string;
+  name: string;
+  bounds: [[number, number], [number, number]]; // SW, NE corners
+  status: 'searched' | 'eliminated' | 'interest';
+  notes: string;
+  dateAdded: string;
+  color: string;
+}
+
+// BTME map bounds (from the official map)
+export const BTME_MAP_BOUNDS = {
+  // Continental Western US portion
+  west: {
+    north: 49.0,
+    south: 31.0,
+    east: -102.0,
+    west: -125.0,
+  },
+  // Alaska portion
+  alaska: {
+    north: 72.0,
+    south: 51.0,
+    east: -129.0,
+    west: -180.0,
+  },
+};
+
+// Stable land types per Justin's statements
+export const STABLE_LAND_TYPES: LayerType[] = ['national_park', 'wilderness'];
+
 // Western US states for filtering
 export const WESTERN_US_STATES = [
   'WA', 'OR', 'CA', 'ID', 'NV', 'MT', 'WY', 'UT', 'CO', 'AZ', 'NM',

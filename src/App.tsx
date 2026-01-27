@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { MapView } from './components/MapView';
 import { LayerPanel } from './components/LayerPanel';
-import { SelectionGroupsPanel } from './components/SelectionGroupsPanel';
+import { BTMEFiltersPanel } from './components/BTMEFiltersPanel';
+import { SearchAreaPanel } from './components/SearchAreaPanel';
 import { SearchPanel } from './components/SearchPanel';
 import './App.css';
 
-type SidebarTab = 'layers' | 'selections';
+type SidebarTab = 'layers' | 'filters' | 'search';
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -14,8 +15,8 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Western US Geography Explorer</h1>
-        <p className="subtitle">Overlay and analyze geographic boundaries</p>
+        <h1>BTME Map Explorer</h1>
+        <p className="subtitle">Beyond The Map's Edge - Western US Geography Analysis</p>
         <SearchPanel />
       </header>
 
@@ -29,16 +30,23 @@ function App() {
               Layers
             </button>
             <button
-              className={activeTab === 'selections' ? 'active' : ''}
-              onClick={() => setActiveTab('selections')}
+              className={activeTab === 'filters' ? 'active' : ''}
+              onClick={() => setActiveTab('filters')}
             >
-              Selections
+              BTME Filters
+            </button>
+            <button
+              className={activeTab === 'search' ? 'active' : ''}
+              onClick={() => setActiveTab('search')}
+            >
+              Search Areas
             </button>
           </div>
 
           <div className="sidebar-content">
             {activeTab === 'layers' && <LayerPanel />}
-            {activeTab === 'selections' && <SelectionGroupsPanel />}
+            {activeTab === 'filters' && <BTMEFiltersPanel />}
+            {activeTab === 'search' && <SearchAreaPanel />}
           </div>
 
           <button
@@ -55,9 +63,9 @@ function App() {
       </div>
 
       <footer className="app-footer">
-        <span>Tip: Add layers to start exploring. Use filters and color rules to highlight specific areas.</span>
+        <span>Tip: Add layers, apply BTME filters, and mark search areas to track your progress.</span>
         <span className="data-attribution">
-          Data: US Census Bureau, NPS, OpenStreetMap contributors
+          Data: NPS, USFS, BLM, OpenStreetMap | Not affiliated with BTME
         </span>
       </footer>
     </div>
