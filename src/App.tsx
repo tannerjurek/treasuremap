@@ -4,10 +4,11 @@ import { LayerPanel } from './components/LayerPanel';
 import { BTMEFiltersPanel } from './components/BTMEFiltersPanel';
 import { SearchAreaPanel } from './components/SearchAreaPanel';
 import { PoemClueSearchPanel } from './components/PoemClueSearchPanel';
+import { GeometryToolsPanel } from './components/GeometryToolsPanel';
 import { SearchPanel } from './components/SearchPanel';
 import './App.css';
 
-type SidebarTab = 'layers' | 'filters' | 'clues' | 'search';
+type SidebarTab = 'layers' | 'filters' | 'geometry' | 'clues' | 'search';
 
 function App() {
   console.log('App component rendering');
@@ -43,6 +44,13 @@ function App() {
               Filters
             </button>
             <button
+              className={activeTab === 'geometry' ? 'active' : ''}
+              onClick={() => setActiveTab('geometry')}
+              title="Geometry and bearing tools"
+            >
+              Geo
+            </button>
+            <button
               className={activeTab === 'clues' ? 'active' : ''}
               onClick={() => setActiveTab('clues')}
               title="Search by poem clues"
@@ -61,6 +69,7 @@ function App() {
           <div className="sidebar-content">
             {activeTab === 'layers' && <LayerPanel />}
             {activeTab === 'filters' && <BTMEFiltersPanel />}
+            {activeTab === 'geometry' && <GeometryToolsPanel />}
             {activeTab === 'clues' && <PoemClueSearchPanel />}
             {activeTab === 'search' && <SearchAreaPanel />}
           </div>
@@ -79,7 +88,7 @@ function App() {
       </div>
 
       <footer className="app-footer">
-        <span>Tip: Use Layers to add data, Filters to eliminate areas, Clues to search poem keywords, Areas to track progress.</span>
+        <span>Tip: Use Layers to add data, Filters to eliminate areas, Geo for bearing tools, Clues for poem keywords.</span>
         <span className="data-attribution">
           Data: NPS, USFS, BLM, GNIS, OpenStreetMap | Not affiliated with BTME
         </span>
