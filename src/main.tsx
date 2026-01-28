@@ -4,6 +4,13 @@ import { ErrorBoundary } from './ErrorBoundary'
 import './index.css'
 import App from './App.tsx'
 
+// Extend window interface for app loading flag
+declare global {
+  interface Window {
+    __appLoaded?: boolean;
+  }
+}
+
 console.log('[Boot] main.tsx module loaded');
 
 try {
@@ -26,7 +33,9 @@ try {
     </StrictMode>,
   );
 
-  console.log('[Boot] Render call completed');
+  // Signal that app has loaded successfully
+  window.__appLoaded = true;
+  console.log('[Boot] Render call completed, app loaded');
 } catch (error) {
   console.error('[Boot] Fatal error during initialization:', error);
   const rootElement = document.getElementById('root');
