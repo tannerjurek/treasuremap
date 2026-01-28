@@ -10,10 +10,6 @@ import {
   loadWildernessAreas,
   loadStateParks,
   loadRecreationAreas,
-  loadConservationAreas,
-  loadTrails,
-  loadTrailheads,
-  loadWaterFeatures,
   loadGeoJSON,
 } from '../utils/dataLoader';
 import { FilterPanel } from './FilterPanel';
@@ -32,11 +28,6 @@ const LAYER_TYPE_OPTIONS: { value: LayerType; label: string; group: string }[] =
   { value: 'wilderness', label: 'Wilderness Areas', group: 'Public Lands' },
   { value: 'state_park', label: 'State Parks', group: 'Public Lands' },
   { value: 'recreation_area', label: 'Recreation Areas', group: 'Public Lands' },
-  { value: 'conservation_area', label: 'Conservation Areas', group: 'Public Lands' },
-  // BTME Hunt specific
-  { value: 'trail', label: 'Trails (Eliminate Proximity)', group: 'Hunt Tools' },
-  { value: 'trailhead', label: 'Trailheads & Parking', group: 'Hunt Tools' },
-  { value: 'water_feature', label: 'Water Features (Falls, Springs)', group: 'Hunt Tools' },
   // Custom
   { value: 'custom', label: 'Custom GeoJSON', group: 'Custom' },
 ];
@@ -215,18 +206,6 @@ export function LayerPanel() {
         case 'recreation_area':
           data = await loadRecreationAreas();
           break;
-        case 'conservation_area':
-          data = await loadConservationAreas();
-          break;
-        case 'trail':
-          data = await loadTrails();
-          break;
-        case 'trailhead':
-          data = await loadTrailheads();
-          break;
-        case 'water_feature':
-          data = await loadWaterFeatures();
-          break;
         case 'custom':
           if (customFile) {
             data = await loadGeoJSON(customFile, 'custom');
@@ -266,7 +245,7 @@ export function LayerPanel() {
               value={newLayerType}
               onChange={(e) => setNewLayerType(e.target.value as LayerType)}
             >
-              {['Reference', 'Public Lands', 'Hunt Tools', 'Custom'].map(group => (
+              {['Reference', 'Public Lands', 'Custom'].map(group => (
                 <optgroup key={group} label={group}>
                   {LAYER_TYPE_OPTIONS
                     .filter(opt => opt.group === group)
