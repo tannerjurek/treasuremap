@@ -42,18 +42,40 @@
       </div>
     </div>
     <script>
-      // Debug: Track loading progress
+      // Debug: Track loading progress and catch all errors
       console.log('[Boot] HTML loaded, waiting for main module');
-      window.addEventListener('error', function(e) {
-        console.error('[Boot] Script error:', e.message, e.filename, e.lineno);
+      window.__appLoaded = false;
+
+      function showError(title, message, details) {
         var fallback = document.getElementById('loading-fallback');
         if (fallback) {
-          fallback.innerHTML = '<h1 style="color:#dc3545">Error Loading App</h1>' +
-            '<p>Error: ' + e.message + '</p>' +
-            '<p>File: ' + e.filename + ':' + e.lineno + '</p>' +
-            '<p style="margin-top:20px;font-size:0.9em;color:#a1a1aa">Please try refreshing the page or clearing your browser cache.</p>';
+          fallback.innerHTML = '<h1 style="color:#dc3545">' + title + '</h1>' +
+            '<p>' + message + '</p>' +
+            (details ? '<pre style="background:#0f3460;padding:10px;border-radius:4px;text-align:left;overflow:auto;max-width:90%;font-size:12px">' + details + '</pre>' : '') +
+            '<p style="margin-top:20px;font-size:0.9em;color:#a1a1aa">Try refreshing the page or clearing your browser cache.</p>';
         }
+      }
+
+      // Catch synchronous errors
+      window.addEventListener('error', function(e) {
+        console.error('[Boot] Script error:', e.message, e.filename, e.lineno);
+        showError('Error Loading App', 'A script error occurred:', e.message + '\nFile: ' + (e.filename || 'unknown') + ':' + e.lineno);
       });
+
+      // Catch Promise rejections
+      window.addEventListener('unhandledrejection', function(e) {
+        console.error('[Boot] Unhandled rejection:', e.reason);
+        showError('Error Loading App', 'An async error occurred:', String(e.reason));
+      });
+
+      // Timeout: if app hasn't loaded in 15 seconds, show error
+      setTimeout(function() {
+        if (!window.__appLoaded) {
+          console.error('[Boot] Timeout: App did not load within 15 seconds');
+          showError('Loading Timeout', 'The application is taking too long to load.',
+            'This could be due to:\n- Slow network connection\n- JavaScript file failed to load\n- Browser blocking the script');
+        }
+      }, 15000);
     </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
