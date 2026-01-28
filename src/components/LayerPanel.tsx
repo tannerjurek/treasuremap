@@ -11,6 +11,9 @@ import {
   loadStateParks,
   loadRecreationAreas,
   loadConservationAreas,
+  loadTrails,
+  loadTrailheads,
+  loadWaterFeatures,
   loadGeoJSON,
 } from '../utils/dataLoader';
 import { FilterPanel } from './FilterPanel';
@@ -18,17 +21,24 @@ import { ColorRulesPanel } from './ColorRulesPanel';
 import { StylePanel } from './StylePanel';
 
 // Layer options matching the BTME map
-const LAYER_TYPE_OPTIONS: { value: LayerType; label: string }[] = [
-  { value: 'state', label: 'State Boundaries' },
-  { value: 'county', label: 'Counties' },
-  { value: 'national_park', label: 'National Parks' },
-  { value: 'national_monument', label: 'National Monuments' },
-  { value: 'national_forest', label: 'National Forests' },
-  { value: 'wilderness', label: 'Wilderness Areas' },
-  { value: 'state_park', label: 'State Parks' },
-  { value: 'recreation_area', label: 'Recreation Areas' },
-  { value: 'conservation_area', label: 'Conservation Areas' },
-  { value: 'custom', label: 'Custom GeoJSON' },
+const LAYER_TYPE_OPTIONS: { value: LayerType; label: string; group: string }[] = [
+  // Reference layers
+  { value: 'state', label: 'State Boundaries', group: 'Reference' },
+  { value: 'county', label: 'Counties', group: 'Reference' },
+  // Public lands
+  { value: 'national_park', label: 'National Parks', group: 'Public Lands' },
+  { value: 'national_monument', label: 'National Monuments', group: 'Public Lands' },
+  { value: 'national_forest', label: 'National Forests', group: 'Public Lands' },
+  { value: 'wilderness', label: 'Wilderness Areas', group: 'Public Lands' },
+  { value: 'state_park', label: 'State Parks', group: 'Public Lands' },
+  { value: 'recreation_area', label: 'Recreation Areas', group: 'Public Lands' },
+  { value: 'conservation_area', label: 'Conservation Areas', group: 'Public Lands' },
+  // BTME Hunt specific
+  { value: 'trail', label: 'Trails (Eliminate Proximity)', group: 'Hunt Tools' },
+  { value: 'trailhead', label: 'Trailheads & Parking', group: 'Hunt Tools' },
+  { value: 'water_feature', label: 'Water Features (Falls, Springs)', group: 'Hunt Tools' },
+  // Custom
+  { value: 'custom', label: 'Custom GeoJSON', group: 'Custom' },
 ];
 
 const DEFAULT_COLORS = [
@@ -208,6 +218,15 @@ export function LayerPanel() {
         case 'conservation_area':
           data = await loadConservationAreas();
           break;
+        case 'trail':
+          data = await loadTrails();
+          break;
+        case 'trailhead':
+          data = await loadTrailheads();
+          break;
+        case 'water_feature':
+          data = await loadWaterFeatures();
+          break;
         case 'custom':
           if (customFile) {
             data = await loadGeoJSON(customFile, 'custom');
@@ -247,10 +266,16 @@ export function LayerPanel() {
               value={newLayerType}
               onChange={(e) => setNewLayerType(e.target.value as LayerType)}
             >
-              {LAYER_TYPE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
+              {['Reference', 'Public Lands', 'Hunt Tools', 'Custom'].map(group => (
+                <optgroup key={group} label={group}>
+                  {LAYER_TYPE_OPTIONS
+                    .filter(opt => opt.group === group)
+                    .map(opt => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                </optgroup>
               ))}
             </select>
           </div>

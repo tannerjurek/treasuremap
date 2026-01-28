@@ -51,6 +51,21 @@ const DATA_SOURCES = {
 
   // Protected Areas (includes various designations)
   protectedAreas: 'https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/USA_Protected_Areas/FeatureServer/0/query',
+
+  // Trails (USFS National Trail System)
+  trails: 'https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_TrailNFSPublic_01/MapServer/0/query',
+
+  // Trailheads
+  trailheads: 'https://services1.arcgis.com/fBc8EJBxQRMcHlei/arcgis/rest/services/NPS_Public_POIs/FeatureServer/0/query',
+
+  // GNIS Geographic Names (for place name searches)
+  gnis: 'https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/USA_Geographic_Names/FeatureServer/0/query',
+
+  // Water features - NHD
+  waterFeatures: 'https://hydro.nationalmap.gov/arcgis/rest/services/nhd/MapServer/6/query',
+
+  // Waterfalls
+  waterfalls: 'https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/USA_Geographic_Names/FeatureServer/0/query',
 };
 
 // Generate a unique ID for each feature
@@ -455,5 +470,143 @@ export const getPropertyStats = (
     max: Math.max(...values),
     avg: values.reduce((a, b) => a + b, 0) / values.length,
     count: values.length,
+  };
+};
+
+// ============================================
+// BTME-specific data loaders
+// ============================================
+
+// Fetch trails (for elimination - "not near trails")
+export const loadTrails = async (): Promise<FeatureCollection> => {
+  try {
+    const url = buildArcGISQuery(DATA_SOURCES.trails, WESTERN_BOUNDS, '&resultRecordCount=3000');
+    const response = await fetch(url);
+
+    if (!response.ok) throw new Error('Failed to load trails');
+
+    const data = await response.json();
+    return addFeatureIds(data, 'trail');
+  } catch (error) {
+    console.error('Error loading trails:', error);
+    throw error;
+  }
+};
+
+// Fetch trailheads/parking (access points)
+export const loadTrailheads = async (): Promise<FeatureCollection> => {
+  try {
+    // Query for parking and trailhead POIs
+    const url = `${DATA_SOURCES.trailheads}?where=POITYPE%20LIKE%20%27%25Trail%25%27%20OR%20POITYPE%20LIKE%20%27%25Parking%25%27&outFields=*&f=geojson&resultRecordCount=2000`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      // Fallback to GNIS for trailhead search
+      return searchPlaceNames(['trailhead', 'parking']);
+    }
+
+    const data = await response.json();
+    return addFeatureIds(data, 'trailhead');
+  } catch (error) {
+    console.error('Error loading trailheads:', error);
+    // Return empty if fails
+    return { type: 'FeatureCollection', features: [] };
+  }
+};
+
+// Search for place names matching keywords (for poem clues)
+export const searchPlaceNames = async (keywords: string[]): Promise<FeatureCollection> => {
+  try {
+    // Build OR query for all keywords
+    const whereClause = keywords
+      .map(k => `GNIS_NAME LIKE '%${k}%'`)
+      .join(' OR ');
+
+    const url = `${DATA_SOURCES.gnis}?where=${encodeURIComponent(whereClause)}&outFields=*&f=geojson&geometry=${encodeURIComponent(JSON.stringify({
+      xmin: WESTERN_BOUNDS.xmin,
+      ymin: WESTERN_BOUNDS.ymin,
+      xmax: WESTERN_BOUNDS.xmax,
+      ymax: WESTERN_BOUNDS.ymax,
+      spatialReference: { wkid: 4326 }
+    }))}&geometryType=esriGeometryEnvelope&spatialRel=esriSpatialRelIntersects&resultRecordCount=500`;
+
+    const response = await fetch(url);
+
+    if (!response.ok) throw new Error('Failed to search place names');
+
+    const data = await response.json();
+    return addFeatureIds(data, 'place_name');
+  } catch (error) {
+    console.error('Error searching place names:', error);
+    return { type: 'FeatureCollection', features: [] };
+  }
+};
+
+// BTME Poem keywords for place name searches
+export const POEM_KEYWORDS = {
+  bear: ['Bear', 'Ursa', 'Grizzly', 'Kodiak'],
+  bride: ['Bride', 'Wedding', 'Bridal', 'Veil'],
+  granite: ['Granite', 'Stone', 'Rock', 'Boulder'],
+  water: ['Falls', 'Waterfall', 'Spring', 'Creek', 'River'],
+  arch: ['Arch', 'Arc', 'Double'],
+  face: ['Face', 'Head', 'Profile', 'Lookout', 'View'],
+  hole: ['Hole', 'Cave', 'Hollow', 'Gap'],
+};
+
+// Load water features (falls, springs)
+export const loadWaterFeatures = async (): Promise<FeatureCollection> => {
+  try {
+    // Search GNIS for waterfalls and springs
+    const keywords = ['Falls', 'Waterfall', 'Spring', 'Hot Spring'];
+    const whereClause = keywords
+      .map(k => `GNIS_NAME LIKE '%${k}%'`)
+      .join(' OR ');
+
+    const url = `${DATA_SOURCES.waterfalls}?where=${encodeURIComponent(whereClause)}&outFields=*&f=geojson&geometry=${encodeURIComponent(JSON.stringify({
+      xmin: WESTERN_BOUNDS.xmin,
+      ymin: WESTERN_BOUNDS.ymin,
+      xmax: WESTERN_BOUNDS.xmax,
+      ymax: WESTERN_BOUNDS.ymax,
+      spatialReference: { wkid: 4326 }
+    }))}&geometryType=esriGeometryEnvelope&spatialRel=esriSpatialRelIntersects&resultRecordCount=1000`;
+
+    const response = await fetch(url);
+
+    if (!response.ok) throw new Error('Failed to load water features');
+
+    const data = await response.json();
+    return addFeatureIds(data, 'water_feature');
+  } catch (error) {
+    console.error('Error loading water features:', error);
+    return { type: 'FeatureCollection', features: [] };
+  }
+};
+
+// Search for features by poem clue category
+export const searchByPoemClue = async (clueCategory: keyof typeof POEM_KEYWORDS): Promise<FeatureCollection> => {
+  const keywords = POEM_KEYWORDS[clueCategory];
+  return searchPlaceNames(keywords);
+};
+
+// Filter existing layer features by name containing keywords
+export const filterFeaturesByName = (
+  data: FeatureCollection,
+  keywords: string[]
+): FeatureCollection => {
+  const lowerKeywords = keywords.map(k => k.toLowerCase());
+
+  return {
+    type: 'FeatureCollection',
+    features: data.features.filter(feature => {
+      const name = (
+        feature.properties?.NAME ||
+        feature.properties?.name ||
+        feature.properties?.GNIS_NAME ||
+        feature.properties?.UNIT_NAME ||
+        ''
+      ).toLowerCase();
+
+      return lowerKeywords.some(keyword => name.includes(keyword));
+    }),
   };
 };

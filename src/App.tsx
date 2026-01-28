@@ -3,10 +3,11 @@ import { MapView } from './components/MapView';
 import { LayerPanel } from './components/LayerPanel';
 import { BTMEFiltersPanel } from './components/BTMEFiltersPanel';
 import { SearchAreaPanel } from './components/SearchAreaPanel';
+import { PoemClueSearchPanel } from './components/PoemClueSearchPanel';
 import { SearchPanel } from './components/SearchPanel';
 import './App.css';
 
-type SidebarTab = 'layers' | 'filters' | 'search';
+type SidebarTab = 'layers' | 'filters' | 'clues' | 'search';
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -26,26 +27,37 @@ function App() {
             <button
               className={activeTab === 'layers' ? 'active' : ''}
               onClick={() => setActiveTab('layers')}
+              title="Add and manage map layers"
             >
               Layers
             </button>
             <button
               className={activeTab === 'filters' ? 'active' : ''}
               onClick={() => setActiveTab('filters')}
+              title="Apply BTME hunt filters"
             >
-              BTME Filters
+              Filters
+            </button>
+            <button
+              className={activeTab === 'clues' ? 'active' : ''}
+              onClick={() => setActiveTab('clues')}
+              title="Search by poem clues"
+            >
+              Clues
             </button>
             <button
               className={activeTab === 'search' ? 'active' : ''}
               onClick={() => setActiveTab('search')}
+              title="Track searched areas"
             >
-              Search Areas
+              Areas
             </button>
           </div>
 
           <div className="sidebar-content">
             {activeTab === 'layers' && <LayerPanel />}
             {activeTab === 'filters' && <BTMEFiltersPanel />}
+            {activeTab === 'clues' && <PoemClueSearchPanel />}
             {activeTab === 'search' && <SearchAreaPanel />}
           </div>
 
@@ -63,9 +75,9 @@ function App() {
       </div>
 
       <footer className="app-footer">
-        <span>Tip: Add layers, apply BTME filters, and mark search areas to track your progress.</span>
+        <span>Tip: Use Layers to add data, Filters to eliminate areas, Clues to search poem keywords, Areas to track progress.</span>
         <span className="data-attribution">
-          Data: NPS, USFS, BLM, OpenStreetMap | Not affiliated with BTME
+          Data: NPS, USFS, BLM, GNIS, OpenStreetMap | Not affiliated with BTME
         </span>
       </footer>
     </div>

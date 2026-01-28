@@ -1315,3 +1315,196 @@
 .danger-btn:hover {
   filter: brightness(1.1);
 }
+
+/* ============================================
+   Poem Clue Search Panel
+   ============================================ */
+
+.poem-clue-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.poem-clue-panel h4 {
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem;
+  color: var(--text-primary);
+}
+
+.poem-clue-panel .section-description {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.clue-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.clue-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  background: var(--bg-light);
+  border: none;
+  border-left: 4px solid var(--primary-color);
+  border-radius: 0 6px 6px 0;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s;
+}
+
+.clue-btn:hover {
+  background: var(--bg-dark);
+}
+
+.clue-btn.active {
+  background: var(--bg-dark);
+  border-left-width: 6px;
+}
+
+.clue-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.clue-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.clue-line {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.clue-keywords {
+  font-size: 0.7rem;
+  color: var(--primary-color);
+}
+
+.custom-search {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.custom-search input {
+  flex: 1;
+  padding: 0.5rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+}
+
+.search-btn {
+  padding: 0.5rem 1rem;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.search-btn:hover:not(:disabled) {
+  background: var(--primary-dark);
+}
+
+.search-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.search-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: var(--bg-dark);
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.result-name {
+  color: var(--text-primary);
+  text-transform: capitalize;
+}
+
+.result-count {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+/* ============================================
+   Distance Measurement Tool (Map Overlay)
+   ============================================ */
+
+.distance-tool {
+  position: absolute;
+  top: 10px;
+  right: 60px;
+  z-index: 1000;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.distance-tool button {
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-medium);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.distance-tool button:hover {
+  background: var(--bg-light);
+}
+
+.distance-tool button.active {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.distance-display {
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-medium);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* Layer type select with groups */
+.form-group select optgroup {
+  background: var(--bg-medium);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.form-group select option {
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  padding: 0.5rem;
+}

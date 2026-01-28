@@ -36,7 +36,14 @@ export type LayerType =
   | 'state_park'
   | 'recreation_area'
   | 'conservation_area'
+  | 'trail'
+  | 'trailhead'
+  | 'water_feature'
+  | 'place_name'
   | 'custom';
+
+// Poem clue categories for place name searches
+export type PoemClueCategory = 'bear' | 'bride' | 'granite' | 'water' | 'arch' | 'face' | 'hole';
 
 export interface GeoLayer {
   id: string;
