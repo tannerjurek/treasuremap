@@ -155,48 +155,6 @@ export const loadCounties = async (): Promise<FeatureCollection> => {
   return addFeatureIds(westernCounties, 'county');
 };
 
-// Fetch NPS units and filter by designation type
-const loadNPSUnits = async (designationType: string): Promise<FeatureCollection> => {
-  try {
-    // Query Western US
-    const westernUrl = buildArcGISQuery(DATA_SOURCES.npsUnits, WESTERN_BOUNDS);
-    const westernResponse = await fetch(westernUrl);
-
-    let features: Feature[] = [];
-
-    if (westernResponse.ok) {
-      const westernData = await westernResponse.json();
-      features = westernData.features || [];
-    }
-
-    // Also query Alaska
-    try {
-      const alaskaUrl = buildArcGISQuery(DATA_SOURCES.npsUnits, ALASKA_BOUNDS);
-      const alaskaResponse = await fetch(alaskaUrl);
-      if (alaskaResponse.ok) {
-        const alaskaData = await alaskaResponse.json();
-        features = [...features, ...(alaskaData.features || [])];
-      }
-    } catch {
-      // Alaska query failed, continue with western data only
-    }
-
-    // Filter by designation type
-    const filtered: FeatureCollection = {
-      type: 'FeatureCollection',
-      features: features.filter((f: Feature) => {
-        const designation = f.properties?.UNIT_TYPE || f.properties?.PARKNAME || '';
-        return designation.toLowerCase().includes(designationType.toLowerCase());
-      }),
-    };
-
-    return addFeatureIds(filtered, designationType.replace(/\s+/g, '_').toLowerCase());
-  } catch (error) {
-    console.error(`Error loading NPS ${designationType}:`, error);
-    throw error;
-  }
-};
-
 // Fetch National Parks
 export const loadNationalParks = async (): Promise<FeatureCollection> => {
   try {

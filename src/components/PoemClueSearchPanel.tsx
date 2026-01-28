@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMapStore } from '../store/mapStore';
-import { searchByPoemClue, POEM_KEYWORDS, filterFeaturesByName } from '../utils/dataLoader';
+import { searchByPoemClue, POEM_KEYWORDS } from '../utils/dataLoader';
 import type { PoemClueCategory } from '../types';
 
 const CLUE_DESCRIPTIONS: Record<PoemClueCategory, { line: string; keywords: string[] }> = {
@@ -130,23 +130,6 @@ export function PoemClueSearchPanel() {
     } finally {
       setIsSearching(false);
     }
-  };
-
-  const handleFilterExisting = (clue: PoemClueCategory) => {
-    // Filter existing layers by poem keywords
-    const keywords = POEM_KEYWORDS[clue];
-    layers.forEach(layer => {
-      if (layer.data && layer.data.features.length > 0) {
-        const filtered = filterFeaturesByName(layer.data, keywords);
-        if (filtered.features.length > 0) {
-          setResults(prev => [...prev, {
-            name: `${layer.name} (${clue})`,
-            type: 'Filtered',
-            count: filtered.features.length,
-          }]);
-        }
-      }
-    });
   };
 
   return (
