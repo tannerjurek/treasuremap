@@ -13,6 +13,8 @@ import { useMapStore } from '../store/mapStore';
 // Types are imported via mapStore
 import 'leaflet/dist/leaflet.css';
 
+console.log('MapView module loaded');
+
 // Map controller component for syncing state
 function MapController() {
   const map = useMap();

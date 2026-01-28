@@ -10,8 +10,12 @@ import './App.css';
 type SidebarTab = 'layers' | 'filters' | 'clues' | 'search';
 
 function App() {
+  console.log('App component rendering');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<SidebarTab>('layers');
+
+  // Debug: log when component mounts
+  console.log('App render - activeTab:', activeTab, 'sidebarOpen:', sidebarOpen);
 
   return (
     <div className="app">
