@@ -1,29 +1,77 @@
 import type { FeatureCollection, Feature } from 'geojson';
 import { WESTERN_US_STATES } from '../types';
 
-// Public data sources for geographic boundaries
+// Western US bounding box for spatial queries (includes Alaska inset area conceptually)
+const WESTERN_BOUNDS = {
+  xmin: -125,
+  ymin: 31,
+  xmax: -102,
+  ymax: 49,
+};
+
+// Alaska bounds for separate queries
+const ALASKA_BOUNDS = {
+  xmin: -180,
+  ymin: 51,
+  xmax: -129,
+  ymax: 72,
+};
+
+// Build ArcGIS query with spatial filter
+const buildArcGISQuery = (baseUrl: string, bounds = WESTERN_BOUNDS, extraParams: string = '') => {
+  const geometry = encodeURIComponent(JSON.stringify({
+    xmin: bounds.xmin,
+    ymin: bounds.ymin,
+    xmax: bounds.xmax,
+    ymax: bounds.ymax,
+    spatialReference: { wkid: 4326 }
+  }));
+  return `${baseUrl}?where=1%3D1&outFields=*&f=geojson&geometry=${geometry}&geometryType=esriGeometryEnvelope&spatialRel=esriSpatialRelIntersects${extraParams}`;
+};
+
+// Public data sources for BTME map layers
 const DATA_SOURCES = {
-  // Census Bureau TIGER/Line Shapefiles (converted to GeoJSON)
+  // State boundaries
   states: 'https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json',
 
-  // Alternative sources for different geography types
-  counties: (state: string) =>
-    `https://raw.githubusercontent.com/deldersveld/topojson/master/countries/us-states/${state}-counties.json`,
+  // County boundaries
+  counties: 'https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json',
 
-  // National Park Service boundaries
-  nationalParks: 'https://services1.arcgis.com/fBc8EJBxQRMcHlei/arcgis/rest/services/NPS_Land_Resources_Division_Boundary_and_Tract_Data_Service/FeatureServer/2/query?outFields=*&where=1%3D1&f=geojson',
+  // NPS - National Parks, Monuments, Recreation Areas, etc.
+  npsUnits: 'https://services1.arcgis.com/fBc8EJBxQRMcHlei/arcgis/rest/services/NPS_Land_Resources_Division_Boundary_and_Tract_Data_Service/FeatureServer/2/query',
 
-  // USGS Protected Areas
-  protectedAreas: 'https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/USA_Protected_Areas/FeatureServer/0/query?where=1%3D1&outFields=*&f=geojson',
+  // USFS National Forests
+  nationalForests: 'https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_ForestSystemBoundaries_01/MapServer/0/query',
+
+  // Wilderness Areas
+  wilderness: 'https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/USA_Wilderness_Areas/FeatureServer/0/query',
+
+  // State Parks
+  stateParks: 'https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/USA_State_Parks/FeatureServer/0/query',
+
+  // Protected Areas (includes various designations)
+  protectedAreas: 'https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/USA_Protected_Areas/FeatureServer/0/query',
+
+  // Trails (USFS National Trail System)
+  trails: 'https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_TrailNFSPublic_01/MapServer/0/query',
+
+  // Trailheads
+  trailheads: 'https://services1.arcgis.com/fBc8EJBxQRMcHlei/arcgis/rest/services/NPS_Public_POIs/FeatureServer/0/query',
+
+  // GNIS Geographic Names (for place name searches)
+  gnis: 'https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/USA_Geographic_Names/FeatureServer/0/query',
+
+  // Water features - NHD
+  waterFeatures: 'https://hydro.nationalmap.gov/arcgis/rest/services/nhd/MapServer/6/query',
+
+  // Waterfalls
+  waterfalls: 'https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/USA_Geographic_Names/FeatureServer/0/query',
 };
 
 // Generate a unique ID for each feature
 const generateFeatureId = (feature: Feature, index: number, layerType: string): string => {
   const props = feature.properties || {};
-
-  // Try common ID fields
-  const idFields = ['GEOID', 'GEOID10', 'GEOID20', 'ZCTA5CE10', 'ZCTA5CE20',
-                    'OBJECTID', 'FID', 'id', 'ID', 'NAME', 'name', 'UNIT_CODE'];
+  const idFields = ['GEOID', 'OBJECTID', 'FID', 'id', 'ID', 'UNIT_CODE', 'NAME', 'name'];
 
   for (const field of idFields) {
     if (props[field]) {
@@ -54,30 +102,29 @@ export const addFeatureIds = (
 // Filter features to western US states
 export const filterToWesternUS = (data: FeatureCollection): FeatureCollection => {
   const westernStateSet = new Set(WESTERN_US_STATES);
+  const westernNames = [
+    'Washington', 'Oregon', 'California', 'Idaho', 'Nevada',
+    'Montana', 'Wyoming', 'Utah', 'Colorado', 'Arizona', 'New Mexico',
+    'Alaska'
+  ];
 
   return {
     ...data,
     features: data.features.filter((feature) => {
       const props = feature.properties || {};
-      // Check various state property names
-      const stateCode = props.STATE || props.STUSPS || props.state ||
-                       props.STATE_ABBR || props.STATEABBR;
+      const stateCode = props.STATE || props.STUSPS || props.state || props.STATE_ABBR;
       const stateName = props.NAME || props.name || props.STATE_NAME;
 
       if (stateCode && westernStateSet.has(stateCode)) return true;
-
-      // Check by full state name
-      const westernNames = [
-        'Washington', 'Oregon', 'California', 'Idaho', 'Nevada',
-        'Montana', 'Wyoming', 'Utah', 'Colorado', 'Arizona', 'New Mexico',
-        'Alaska', 'Hawaii'
-      ];
       if (stateName && westernNames.includes(stateName)) return true;
 
       return false;
     }),
   };
 };
+
+// Western US state FIPS codes (AZ, CA, CO, ID, MT, NV, NM, OR, UT, WA, WY + AK)
+const WESTERN_STATE_FIPS = ['02', '04', '06', '08', '16', '30', '32', '35', '41', '49', '53', '56'];
 
 // Fetch and process state boundaries
 export const loadStates = async (): Promise<FeatureCollection> => {
@@ -89,30 +136,258 @@ export const loadStates = async (): Promise<FeatureCollection> => {
   return addFeatureIds(westernData, 'state');
 };
 
-// Fetch and process national parks
-export const loadNationalParks = async (): Promise<FeatureCollection> => {
+// Fetch and process county boundaries
+export const loadCounties = async (): Promise<FeatureCollection> => {
+  const response = await fetch(DATA_SOURCES.counties);
+  if (!response.ok) throw new Error('Failed to load county boundaries');
+
+  const data = await response.json();
+
+  const westernCounties: FeatureCollection = {
+    type: 'FeatureCollection',
+    features: data.features.filter((feature: Feature) => {
+      const fips = feature.id || feature.properties?.GEO_ID || '';
+      const stateFips = String(fips).substring(0, 2);
+      return WESTERN_STATE_FIPS.includes(stateFips);
+    }),
+  };
+
+  return addFeatureIds(westernCounties, 'county');
+};
+
+// Fetch NPS units and filter by designation type
+const loadNPSUnits = async (designationType: string): Promise<FeatureCollection> => {
   try {
-    const response = await fetch(DATA_SOURCES.nationalParks);
-    if (!response.ok) throw new Error('Failed to load national parks');
+    // Query Western US
+    const westernUrl = buildArcGISQuery(DATA_SOURCES.npsUnits, WESTERN_BOUNDS);
+    const westernResponse = await fetch(westernUrl);
 
-    const data = await response.json();
+    let features: Feature[] = [];
 
-    // Filter to western US based on coordinates
-    const westernParks: FeatureCollection = {
+    if (westernResponse.ok) {
+      const westernData = await westernResponse.json();
+      features = westernData.features || [];
+    }
+
+    // Also query Alaska
+    try {
+      const alaskaUrl = buildArcGISQuery(DATA_SOURCES.npsUnits, ALASKA_BOUNDS);
+      const alaskaResponse = await fetch(alaskaUrl);
+      if (alaskaResponse.ok) {
+        const alaskaData = await alaskaResponse.json();
+        features = [...features, ...(alaskaData.features || [])];
+      }
+    } catch {
+      // Alaska query failed, continue with western data only
+    }
+
+    // Filter by designation type
+    const filtered: FeatureCollection = {
       type: 'FeatureCollection',
-      features: data.features.filter((feature: Feature) => {
-        // Check if centroid is in western US bounds
-        // Simplified check - in production would use proper spatial query
-        // For now, include all parks and filter in UI if needed
-        return feature.geometry.type === 'Polygon' ||
-               feature.geometry.type === 'MultiPolygon' ||
-               true;
+      features: features.filter((f: Feature) => {
+        const designation = f.properties?.UNIT_TYPE || f.properties?.PARKNAME || '';
+        return designation.toLowerCase().includes(designationType.toLowerCase());
       }),
     };
 
-    return addFeatureIds(westernParks, 'national_park');
+    return addFeatureIds(filtered, designationType.replace(/\s+/g, '_').toLowerCase());
+  } catch (error) {
+    console.error(`Error loading NPS ${designationType}:`, error);
+    throw error;
+  }
+};
+
+// Fetch National Parks
+export const loadNationalParks = async (): Promise<FeatureCollection> => {
+  try {
+    const westernUrl = buildArcGISQuery(DATA_SOURCES.npsUnits, WESTERN_BOUNDS);
+    const westernResponse = await fetch(westernUrl);
+
+    let features: Feature[] = [];
+
+    if (westernResponse.ok) {
+      const westernData = await westernResponse.json();
+      features = westernData.features || [];
+    }
+
+    // Also query Alaska for parks like Denali, Glacier Bay, etc.
+    try {
+      const alaskaUrl = buildArcGISQuery(DATA_SOURCES.npsUnits, ALASKA_BOUNDS);
+      const alaskaResponse = await fetch(alaskaUrl);
+      if (alaskaResponse.ok) {
+        const alaskaData = await alaskaResponse.json();
+        features = [...features, ...(alaskaData.features || [])];
+      }
+    } catch {
+      // Continue without Alaska data
+    }
+
+    // Filter to National Parks only
+    const parks: FeatureCollection = {
+      type: 'FeatureCollection',
+      features: features.filter((f: Feature) => {
+        const unitType = (f.properties?.UNIT_TYPE || '').toLowerCase();
+        return unitType.includes('national park') && !unitType.includes('parkway');
+      }),
+    };
+
+    return addFeatureIds(parks, 'national_park');
   } catch (error) {
     console.error('Error loading national parks:', error);
+    throw error;
+  }
+};
+
+// Fetch National Monuments
+export const loadNationalMonuments = async (): Promise<FeatureCollection> => {
+  try {
+    const westernUrl = buildArcGISQuery(DATA_SOURCES.npsUnits, WESTERN_BOUNDS);
+    const alaskaUrl = buildArcGISQuery(DATA_SOURCES.npsUnits, ALASKA_BOUNDS);
+
+    const [westernResponse, alaskaResponse] = await Promise.all([
+      fetch(westernUrl),
+      fetch(alaskaUrl).catch(() => null)
+    ]);
+
+    let features: Feature[] = [];
+
+    if (westernResponse.ok) {
+      const data = await westernResponse.json();
+      features = data.features || [];
+    }
+
+    if (alaskaResponse?.ok) {
+      const data = await alaskaResponse.json();
+      features = [...features, ...(data.features || [])];
+    }
+
+    const monuments: FeatureCollection = {
+      type: 'FeatureCollection',
+      features: features.filter((f: Feature) => {
+        const unitType = (f.properties?.UNIT_TYPE || '').toLowerCase();
+        return unitType.includes('monument');
+      }),
+    };
+
+    return addFeatureIds(monuments, 'national_monument');
+  } catch (error) {
+    console.error('Error loading national monuments:', error);
+    throw error;
+  }
+};
+
+// Fetch National Recreation Areas
+export const loadRecreationAreas = async (): Promise<FeatureCollection> => {
+  try {
+    const westernUrl = buildArcGISQuery(DATA_SOURCES.npsUnits, WESTERN_BOUNDS);
+    const response = await fetch(westernUrl);
+
+    if (!response.ok) throw new Error('Failed to load recreation areas');
+
+    const data = await response.json();
+
+    const recAreas: FeatureCollection = {
+      type: 'FeatureCollection',
+      features: (data.features || []).filter((f: Feature) => {
+        const unitType = (f.properties?.UNIT_TYPE || '').toLowerCase();
+        return unitType.includes('recreation area') || unitType.includes('scenic area');
+      }),
+    };
+
+    return addFeatureIds(recAreas, 'recreation_area');
+  } catch (error) {
+    console.error('Error loading recreation areas:', error);
+    throw error;
+  }
+};
+
+// Fetch National Conservation Areas (BLM managed)
+export const loadConservationAreas = async (): Promise<FeatureCollection> => {
+  try {
+    // Use protected areas database and filter for conservation areas
+    const url = buildArcGISQuery(DATA_SOURCES.protectedAreas, WESTERN_BOUNDS, '&resultRecordCount=2000');
+    const response = await fetch(url);
+
+    if (!response.ok) throw new Error('Failed to load conservation areas');
+
+    const data = await response.json();
+
+    const conservationAreas: FeatureCollection = {
+      type: 'FeatureCollection',
+      features: (data.features || []).filter((f: Feature) => {
+        const designation = (f.properties?.Des_Tp || f.properties?.DESGNTN || '').toLowerCase();
+        const name = (f.properties?.NAME || f.properties?.Unit_Nm || '').toLowerCase();
+        return designation.includes('conservation') ||
+               name.includes('conservation area') ||
+               name.includes('nca');
+      }),
+    };
+
+    return addFeatureIds(conservationAreas, 'conservation_area');
+  } catch (error) {
+    console.error('Error loading conservation areas:', error);
+    throw error;
+  }
+};
+
+// Fetch National Forests
+export const loadNationalForests = async (): Promise<FeatureCollection> => {
+  try {
+    const url = buildArcGISQuery(DATA_SOURCES.nationalForests, WESTERN_BOUNDS);
+    const response = await fetch(url);
+
+    if (!response.ok) throw new Error('Failed to load national forests');
+
+    const data = await response.json();
+    return addFeatureIds(data, 'national_forest');
+  } catch (error) {
+    console.error('Error loading national forests:', error);
+    throw error;
+  }
+};
+
+// Fetch Wilderness Areas
+export const loadWildernessAreas = async (): Promise<FeatureCollection> => {
+  try {
+    const westernUrl = buildArcGISQuery(DATA_SOURCES.wilderness, WESTERN_BOUNDS);
+    const alaskaUrl = buildArcGISQuery(DATA_SOURCES.wilderness, ALASKA_BOUNDS);
+
+    const [westernResponse, alaskaResponse] = await Promise.all([
+      fetch(westernUrl),
+      fetch(alaskaUrl).catch(() => null)
+    ]);
+
+    let features: Feature[] = [];
+
+    if (westernResponse.ok) {
+      const data = await westernResponse.json();
+      features = data.features || [];
+    }
+
+    if (alaskaResponse?.ok) {
+      const data = await alaskaResponse.json();
+      features = [...features, ...(data.features || [])];
+    }
+
+    return addFeatureIds({ type: 'FeatureCollection', features }, 'wilderness');
+  } catch (error) {
+    console.error('Error loading wilderness areas:', error);
+    throw error;
+  }
+};
+
+// Fetch State Parks
+export const loadStateParks = async (): Promise<FeatureCollection> => {
+  try {
+    const url = buildArcGISQuery(DATA_SOURCES.stateParks, WESTERN_BOUNDS, '&resultRecordCount=1000');
+    const response = await fetch(url);
+
+    if (!response.ok) throw new Error('Failed to load state parks');
+
+    const data = await response.json();
+    return addFeatureIds(data, 'state_park');
+  } catch (error) {
+    console.error('Error loading state parks:', error);
     throw error;
   }
 };
@@ -133,106 +408,11 @@ export const loadGeoJSON = async (
     data = await response.json();
   }
 
-  // Handle TopoJSON if needed
   if ((data as any).type === 'Topology') {
-    // Would need topojson-client library for proper conversion
     throw new Error('TopoJSON format detected. Please convert to GeoJSON first.');
   }
 
   return addFeatureIds(data, layerType);
-};
-
-// Parse CSV with geographic data and convert to points
-export const loadCSVAsPoints = async (
-  file: File,
-  latField: string,
-  lngField: string
-): Promise<FeatureCollection> => {
-  const Papa = await import('papaparse');
-
-  return new Promise((resolve, reject) => {
-    Papa.default.parse(file, {
-      header: true,
-      complete: (results) => {
-        const features: Feature[] = results.data
-          .filter((row: any) => row[latField] && row[lngField])
-          .map((row: any, index: number) => ({
-            type: 'Feature' as const,
-            geometry: {
-              type: 'Point' as const,
-              coordinates: [parseFloat(row[lngField]), parseFloat(row[latField])],
-            },
-            properties: {
-              ...row,
-              _featureId: `csv_point_${index}`,
-            },
-          }));
-
-        resolve({
-          type: 'FeatureCollection',
-          features,
-        });
-      },
-      error: (error) => reject(error),
-    });
-  });
-};
-
-// Fetch ZIP code boundaries from Census TIGER
-// Note: Full ZCTA data is large (~500MB), so we'd typically use a tile server
-// This is a simplified approach using state-level files
-export const loadZipCodes = async (_stateCode: string): Promise<FeatureCollection> => {
-  // In production, you'd use Census Bureau's API or a tile server
-  // For now, return placeholder that would be filled with actual data
-  console.warn('ZIP code loading requires setting up a data source');
-  return {
-    type: 'FeatureCollection',
-    features: [],
-  };
-};
-
-// Sample data generator for demo purposes
-export const generateSampleZipCodes = (count: number = 100): FeatureCollection => {
-  const features: Feature[] = [];
-
-  // Generate random polygons in western US bounds
-  for (let i = 0; i < count; i++) {
-    const centerLat = 32 + Math.random() * 16; // ~32-48 latitude
-    const centerLng = -124 + Math.random() * 22; // ~-124 to -102 longitude
-    const size = 0.1 + Math.random() * 0.2;
-
-    // Create a simple square polygon
-    const coords = [
-      [
-        [centerLng - size, centerLat - size],
-        [centerLng + size, centerLat - size],
-        [centerLng + size, centerLat + size],
-        [centerLng - size, centerLat + size],
-        [centerLng - size, centerLat - size],
-      ],
-    ];
-
-    features.push({
-      type: 'Feature',
-      geometry: {
-        type: 'Polygon',
-        coordinates: coords,
-      },
-      properties: {
-        _featureId: `sample_zip_${i}`,
-        ZCTA: String(80000 + i).padStart(5, '0'),
-        population: Math.floor(Math.random() * 50000),
-        medianIncome: Math.floor(30000 + Math.random() * 70000),
-        state: WESTERN_US_STATES[Math.floor(Math.random() * WESTERN_US_STATES.length)],
-        urbanRural: Math.random() > 0.5 ? 'urban' : 'rural',
-      },
-    });
-  }
-
-  return {
-    type: 'FeatureCollection',
-    features,
-  };
 };
 
 // Get available properties from a FeatureCollection for filtering
@@ -290,5 +470,143 @@ export const getPropertyStats = (
     max: Math.max(...values),
     avg: values.reduce((a, b) => a + b, 0) / values.length,
     count: values.length,
+  };
+};
+
+// ============================================
+// BTME-specific data loaders
+// ============================================
+
+// Fetch trails (for elimination - "not near trails")
+export const loadTrails = async (): Promise<FeatureCollection> => {
+  try {
+    const url = buildArcGISQuery(DATA_SOURCES.trails, WESTERN_BOUNDS, '&resultRecordCount=3000');
+    const response = await fetch(url);
+
+    if (!response.ok) throw new Error('Failed to load trails');
+
+    const data = await response.json();
+    return addFeatureIds(data, 'trail');
+  } catch (error) {
+    console.error('Error loading trails:', error);
+    throw error;
+  }
+};
+
+// Fetch trailheads/parking (access points)
+export const loadTrailheads = async (): Promise<FeatureCollection> => {
+  try {
+    // Query for parking and trailhead POIs
+    const url = `${DATA_SOURCES.trailheads}?where=POITYPE%20LIKE%20%27%25Trail%25%27%20OR%20POITYPE%20LIKE%20%27%25Parking%25%27&outFields=*&f=geojson&resultRecordCount=2000`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      // Fallback to GNIS for trailhead search
+      return searchPlaceNames(['trailhead', 'parking']);
+    }
+
+    const data = await response.json();
+    return addFeatureIds(data, 'trailhead');
+  } catch (error) {
+    console.error('Error loading trailheads:', error);
+    // Return empty if fails
+    return { type: 'FeatureCollection', features: [] };
+  }
+};
+
+// Search for place names matching keywords (for poem clues)
+export const searchPlaceNames = async (keywords: string[]): Promise<FeatureCollection> => {
+  try {
+    // Build OR query for all keywords
+    const whereClause = keywords
+      .map(k => `GNIS_NAME LIKE '%${k}%'`)
+      .join(' OR ');
+
+    const url = `${DATA_SOURCES.gnis}?where=${encodeURIComponent(whereClause)}&outFields=*&f=geojson&geometry=${encodeURIComponent(JSON.stringify({
+      xmin: WESTERN_BOUNDS.xmin,
+      ymin: WESTERN_BOUNDS.ymin,
+      xmax: WESTERN_BOUNDS.xmax,
+      ymax: WESTERN_BOUNDS.ymax,
+      spatialReference: { wkid: 4326 }
+    }))}&geometryType=esriGeometryEnvelope&spatialRel=esriSpatialRelIntersects&resultRecordCount=500`;
+
+    const response = await fetch(url);
+
+    if (!response.ok) throw new Error('Failed to search place names');
+
+    const data = await response.json();
+    return addFeatureIds(data, 'place_name');
+  } catch (error) {
+    console.error('Error searching place names:', error);
+    return { type: 'FeatureCollection', features: [] };
+  }
+};
+
+// BTME Poem keywords for place name searches
+export const POEM_KEYWORDS = {
+  bear: ['Bear', 'Ursa', 'Grizzly', 'Kodiak'],
+  bride: ['Bride', 'Wedding', 'Bridal', 'Veil'],
+  granite: ['Granite', 'Stone', 'Rock', 'Boulder'],
+  water: ['Falls', 'Waterfall', 'Spring', 'Creek', 'River'],
+  arch: ['Arch', 'Arc', 'Double'],
+  face: ['Face', 'Head', 'Profile', 'Lookout', 'View'],
+  hole: ['Hole', 'Cave', 'Hollow', 'Gap'],
+};
+
+// Load water features (falls, springs)
+export const loadWaterFeatures = async (): Promise<FeatureCollection> => {
+  try {
+    // Search GNIS for waterfalls and springs
+    const keywords = ['Falls', 'Waterfall', 'Spring', 'Hot Spring'];
+    const whereClause = keywords
+      .map(k => `GNIS_NAME LIKE '%${k}%'`)
+      .join(' OR ');
+
+    const url = `${DATA_SOURCES.waterfalls}?where=${encodeURIComponent(whereClause)}&outFields=*&f=geojson&geometry=${encodeURIComponent(JSON.stringify({
+      xmin: WESTERN_BOUNDS.xmin,
+      ymin: WESTERN_BOUNDS.ymin,
+      xmax: WESTERN_BOUNDS.xmax,
+      ymax: WESTERN_BOUNDS.ymax,
+      spatialReference: { wkid: 4326 }
+    }))}&geometryType=esriGeometryEnvelope&spatialRel=esriSpatialRelIntersects&resultRecordCount=1000`;
+
+    const response = await fetch(url);
+
+    if (!response.ok) throw new Error('Failed to load water features');
+
+    const data = await response.json();
+    return addFeatureIds(data, 'water_feature');
+  } catch (error) {
+    console.error('Error loading water features:', error);
+    return { type: 'FeatureCollection', features: [] };
+  }
+};
+
+// Search for features by poem clue category
+export const searchByPoemClue = async (clueCategory: keyof typeof POEM_KEYWORDS): Promise<FeatureCollection> => {
+  const keywords = POEM_KEYWORDS[clueCategory];
+  return searchPlaceNames(keywords);
+};
+
+// Filter existing layer features by name containing keywords
+export const filterFeaturesByName = (
+  data: FeatureCollection,
+  keywords: string[]
+): FeatureCollection => {
+  const lowerKeywords = keywords.map(k => k.toLowerCase());
+
+  return {
+    type: 'FeatureCollection',
+    features: data.features.filter(feature => {
+      const name = (
+        feature.properties?.NAME ||
+        feature.properties?.name ||
+        feature.properties?.GNIS_NAME ||
+        feature.properties?.UNIT_NAME ||
+        ''
+      ).toLowerCase();
+
+      return lowerKeywords.some(keyword => name.includes(keyword));
+    }),
   };
 };

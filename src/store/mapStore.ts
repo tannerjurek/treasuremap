@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { FeatureCollection } from 'geojson';
 import type {
   GeoLayer,
@@ -7,6 +8,8 @@ import type {
   LayerStyle,
   FilterRule,
   ColorRule,
+  BTMEFilters,
+  SearchedArea,
 } from '../types';
 import { WESTERN_US_CENTER } from '../types';
 
@@ -19,6 +22,10 @@ interface MapStore {
   isDrawingMode: boolean;
   searchQuery: string;
   hoveredFeatureId: string | null;
+
+  // BTME Hunt state
+  btmeFilters: BTMEFilters;
+  searchedAreas: SearchedArea[];
 
   // Layer actions
   addLayer: (layer: Omit<GeoLayer, 'id'> & { id?: string }) => void;
@@ -67,6 +74,13 @@ interface MapStore {
   setSearchQuery: (query: string) => void;
   setHoveredFeature: (featureId: string | null) => void;
 
+  // BTME Hunt actions
+  setBTMEFilters: (filters: Partial<BTMEFilters>) => void;
+  addSearchedArea: (area: Omit<SearchedArea, 'id' | 'dateAdded'>) => void;
+  updateSearchedArea: (id: string, updates: Partial<SearchedArea>) => void;
+  removeSearchedArea: (id: string) => void;
+  clearSearchedAreas: () => void;
+
   // Utility
   getFilteredFeatures: (layerId: string) => FeatureCollection | null;
 }
@@ -94,6 +108,16 @@ export const useMapStore = create<MapStore>((set, get) => ({
   isDrawingMode: false,
   searchQuery: '',
   hoveredFeatureId: null,
+
+  // BTME Hunt initial state
+  btmeFilters: {
+    maxElevation: null,
+    stableLandOnly: false,
+    showSearchedAreas: true,
+    showEliminatedAreas: true,
+    clipToBTMEBounds: false,
+  },
+  searchedAreas: [],
 
   // Layer actions
   addLayer: (layer) => {
@@ -420,6 +444,42 @@ export const useMapStore = create<MapStore>((set, get) => ({
 
   setHoveredFeature: (featureId) => {
     set({ hoveredFeatureId: featureId });
+  },
+
+  // BTME Hunt actions
+  setBTMEFilters: (filters) => {
+    set((state) => ({
+      btmeFilters: { ...state.btmeFilters, ...filters },
+    }));
+  },
+
+  addSearchedArea: (area) => {
+    const newArea: SearchedArea = {
+      ...area,
+      id: generateId(),
+      dateAdded: new Date().toISOString(),
+    };
+    set((state) => ({
+      searchedAreas: [...state.searchedAreas, newArea],
+    }));
+  },
+
+  updateSearchedArea: (id, updates) => {
+    set((state) => ({
+      searchedAreas: state.searchedAreas.map((a) =>
+        a.id === id ? { ...a, ...updates } : a
+      ),
+    }));
+  },
+
+  removeSearchedArea: (id) => {
+    set((state) => ({
+      searchedAreas: state.searchedAreas.filter((a) => a.id !== id),
+    }));
+  },
+
+  clearSearchedAreas: () => {
+    set({ searchedAreas: [] });
   },
 
   // Utility
