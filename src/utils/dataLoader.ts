@@ -1,5 +1,86 @@
 import type { FeatureCollection, Feature } from 'geojson';
 import { WESTERN_US_STATES } from '../types';
+import * as turf from '@turf/turf';
+
+// ============================================
+// CACHING SYSTEM
+// ============================================
+
+const CACHE_VERSION = 'v1';
+const CACHE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 1 week
+
+interface CacheEntry {
+  data: FeatureCollection;
+  timestamp: number;
+  version: string;
+}
+
+const getCacheKey = (key: string) => `treasuremap_cache_${CACHE_VERSION}_${key}`;
+
+const getFromCache = (key: string): FeatureCollection | null => {
+  try {
+    const cached = localStorage.getItem(getCacheKey(key));
+    if (!cached) return null;
+
+    const entry: CacheEntry = JSON.parse(cached);
+
+    // Check version and expiry
+    if (entry.version !== CACHE_VERSION) return null;
+    if (Date.now() - entry.timestamp > CACHE_EXPIRY_MS) {
+      localStorage.removeItem(getCacheKey(key));
+      return null;
+    }
+
+    console.log(`[Cache] Hit for ${key}`);
+    return entry.data;
+  } catch {
+    return null;
+  }
+};
+
+const saveToCache = (key: string, data: FeatureCollection): void => {
+  try {
+    const entry: CacheEntry = {
+      data,
+      timestamp: Date.now(),
+      version: CACHE_VERSION,
+    };
+    localStorage.setItem(getCacheKey(key), JSON.stringify(entry));
+    console.log(`[Cache] Saved ${key} (${data.features.length} features)`);
+  } catch (e) {
+    // localStorage might be full - clear old cache entries
+    console.warn('[Cache] Failed to save, clearing old entries');
+    clearOldCacheEntries();
+  }
+};
+
+const clearOldCacheEntries = (): void => {
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key?.startsWith('treasuremap_cache_') && !key.includes(CACHE_VERSION)) {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(key => localStorage.removeItem(key));
+};
+
+// ============================================
+// GEOMETRY SIMPLIFICATION
+// ============================================
+
+const simplifyGeometry = (data: FeatureCollection, tolerance = 0.001): FeatureCollection => {
+  try {
+    const simplified = turf.simplify(data, { tolerance, highQuality: false });
+    const originalSize = JSON.stringify(data).length;
+    const newSize = JSON.stringify(simplified).length;
+    const reduction = Math.round((1 - newSize / originalSize) * 100);
+    console.log(`[Simplify] Reduced geometry by ${reduction}%`);
+    return simplified as FeatureCollection;
+  } catch {
+    return data; // Return original if simplification fails
+  }
+};
 
 // Western US bounding box for spatial queries (includes Alaska inset area conceptually)
 const WESTERN_BOUNDS = {
@@ -128,16 +209,27 @@ const WESTERN_STATE_FIPS = ['02', '04', '06', '08', '16', '30', '32', '35', '41'
 
 // Fetch and process state boundaries
 export const loadStates = async (): Promise<FeatureCollection> => {
+  const cacheKey = 'states';
+  const cached = getFromCache(cacheKey);
+  if (cached) return cached;
+
   const response = await fetch(DATA_SOURCES.states);
   if (!response.ok) throw new Error('Failed to load state boundaries');
 
   const data = await response.json();
   const westernData = filterToWesternUS(data);
-  return addFeatureIds(westernData, 'state');
+  const simplified = simplifyGeometry(westernData, 0.01); // Lower precision for state borders
+  const result = addFeatureIds(simplified, 'state');
+  saveToCache(cacheKey, result);
+  return result;
 };
 
 // Fetch and process county boundaries
 export const loadCounties = async (): Promise<FeatureCollection> => {
+  const cacheKey = 'counties';
+  const cached = getFromCache(cacheKey);
+  if (cached) return cached;
+
   const response = await fetch(DATA_SOURCES.counties);
   if (!response.ok) throw new Error('Failed to load county boundaries');
 
@@ -152,11 +244,18 @@ export const loadCounties = async (): Promise<FeatureCollection> => {
     }),
   };
 
-  return addFeatureIds(westernCounties, 'county');
+  const simplified = simplifyGeometry(westernCounties, 0.005);
+  const result = addFeatureIds(simplified, 'county');
+  saveToCache(cacheKey, result);
+  return result;
 };
 
 // Fetch National Parks
 export const loadNationalParks = async (): Promise<FeatureCollection> => {
+  const cacheKey = 'national_parks';
+  const cached = getFromCache(cacheKey);
+  if (cached) return cached;
+
   try {
     const westernUrl = buildArcGISQuery(DATA_SOURCES.npsUnits, WESTERN_BOUNDS);
     const westernResponse = await fetch(westernUrl);
@@ -189,7 +288,10 @@ export const loadNationalParks = async (): Promise<FeatureCollection> => {
       }),
     };
 
-    return addFeatureIds(parks, 'national_park');
+    const simplified = simplifyGeometry(parks);
+    const result = addFeatureIds(simplified, 'national_park');
+    saveToCache(cacheKey, result);
+    return result;
   } catch (error) {
     console.error('Error loading national parks:', error);
     throw error;
@@ -290,6 +392,10 @@ export const loadConservationAreas = async (): Promise<FeatureCollection> => {
 
 // Fetch National Forests
 export const loadNationalForests = async (): Promise<FeatureCollection> => {
+  const cacheKey = 'national_forests';
+  const cached = getFromCache(cacheKey);
+  if (cached) return cached;
+
   try {
     const url = buildArcGISQuery(DATA_SOURCES.nationalForests, WESTERN_BOUNDS);
     const response = await fetch(url);
@@ -297,7 +403,10 @@ export const loadNationalForests = async (): Promise<FeatureCollection> => {
     if (!response.ok) throw new Error('Failed to load national forests');
 
     const data = await response.json();
-    return addFeatureIds(data, 'national_forest');
+    const simplified = simplifyGeometry(data);
+    const result = addFeatureIds(simplified, 'national_forest');
+    saveToCache(cacheKey, result);
+    return result;
   } catch (error) {
     console.error('Error loading national forests:', error);
     throw error;
@@ -306,6 +415,10 @@ export const loadNationalForests = async (): Promise<FeatureCollection> => {
 
 // Fetch Wilderness Areas
 export const loadWildernessAreas = async (): Promise<FeatureCollection> => {
+  const cacheKey = 'wilderness_areas';
+  const cached = getFromCache(cacheKey);
+  if (cached) return cached;
+
   try {
     const westernUrl = buildArcGISQuery(DATA_SOURCES.wilderness, WESTERN_BOUNDS);
     const alaskaUrl = buildArcGISQuery(DATA_SOURCES.wilderness, ALASKA_BOUNDS);
@@ -327,7 +440,10 @@ export const loadWildernessAreas = async (): Promise<FeatureCollection> => {
       features = [...features, ...(data.features || [])];
     }
 
-    return addFeatureIds({ type: 'FeatureCollection', features }, 'wilderness');
+    const simplified = simplifyGeometry({ type: 'FeatureCollection', features });
+    const result = addFeatureIds(simplified, 'wilderness');
+    saveToCache(cacheKey, result);
+    return result;
   } catch (error) {
     console.error('Error loading wilderness areas:', error);
     throw error;
@@ -336,6 +452,10 @@ export const loadWildernessAreas = async (): Promise<FeatureCollection> => {
 
 // Fetch State Parks
 export const loadStateParks = async (): Promise<FeatureCollection> => {
+  const cacheKey = 'state_parks';
+  const cached = getFromCache(cacheKey);
+  if (cached) return cached;
+
   try {
     const url = buildArcGISQuery(DATA_SOURCES.stateParks, WESTERN_BOUNDS, '&resultRecordCount=1000');
     const response = await fetch(url);
@@ -343,7 +463,10 @@ export const loadStateParks = async (): Promise<FeatureCollection> => {
     if (!response.ok) throw new Error('Failed to load state parks');
 
     const data = await response.json();
-    return addFeatureIds(data, 'state_park');
+    const simplified = simplifyGeometry(data);
+    const result = addFeatureIds(simplified, 'state_park');
+    saveToCache(cacheKey, result);
+    return result;
   } catch (error) {
     console.error('Error loading state parks:', error);
     throw error;
