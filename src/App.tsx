@@ -3,7 +3,7 @@ import { MapView } from './components/MapView';
 import { LayerPanel } from './components/LayerPanel';
 import { BTMEFiltersPanel } from './components/BTMEFiltersPanel';
 import { SearchAreaPanel } from './components/SearchAreaPanel';
-import { PoemClueSearchPanel } from './components/PoemClueSearchPanel';
+import { ClueTrackerPanel } from './components/ClueTrackerPanel';
 import { GeometryToolsPanel } from './components/GeometryToolsPanel';
 import { SearchPanel } from './components/SearchPanel';
 import './App.css';
@@ -11,12 +11,8 @@ import './App.css';
 type SidebarTab = 'layers' | 'filters' | 'geometry' | 'clues' | 'search';
 
 function App() {
-  console.log('App component rendering');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<SidebarTab>('layers');
-
-  // Debug: log when component mounts
-  console.log('App render - activeTab:', activeTab, 'sidebarOpen:', sidebarOpen);
 
   return (
     <div className="app">
@@ -53,7 +49,7 @@ function App() {
             <button
               className={activeTab === 'clues' ? 'active' : ''}
               onClick={() => setActiveTab('clues')}
-              title="Search by poem clues"
+              title="Track poem clues sequentially"
             >
               Clues
             </button>
@@ -70,7 +66,7 @@ function App() {
             {activeTab === 'layers' && <LayerPanel />}
             {activeTab === 'filters' && <BTMEFiltersPanel />}
             {activeTab === 'geometry' && <GeometryToolsPanel />}
-            {activeTab === 'clues' && <PoemClueSearchPanel />}
+            {activeTab === 'clues' && <ClueTrackerPanel />}
             {activeTab === 'search' && <SearchAreaPanel />}
           </div>
 
@@ -88,7 +84,7 @@ function App() {
       </div>
 
       <footer className="app-footer">
-        <span>Tip: Use Layers to add data, Filters to eliminate areas, Geo for bearing tools, Clues for poem keywords.</span>
+        <span>Tip: Use Layers for data, Filters for constraints, Geo for bearings, Clues to track the poem sequence.</span>
         <span className="data-attribution">
           Data: NPS, USFS, BLM, GNIS, OpenStreetMap | Not affiliated with BTME
         </span>
