@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTME Map Explorer - Beyond The Map's Edge Analysis Tool</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet Draw CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-dark: #1a1a2e;
+            --bg-medium: #16213e;
+            --bg-light: #0f3460;
+            --text-primary: #e4e4e7;
+            --text-secondary: #a1a1aa;
+            --border-color: #374151;
+            --primary: #3b82f6;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+        }
+        .app { display: flex; flex-direction: column; height: 100vh; }
+        header {
+            background: linear-gradient(135deg, var(--bg-medium), var(--bg-dark));
+            padding: 10px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        header h1 { font-size: 1.25rem; font-weight: 600; }
+        header .subtitle { color: var(--text-secondary); font-size: 0.8rem; }
+        .header-controls { display: flex; gap: 10px; align-items: center; }
+        .main-content { display: flex; flex: 1; overflow: hidden; }
+        .sidebar {
+            width: 350px;
+            background: var(--bg-medium);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            transition: width 0.3s ease;
+            overflow: hidden;
+        }
+        .sidebar.collapsed { width: 0; }
+        .sidebar-tabs { display: flex; border-bottom: 1px solid var(--border-color); }
+        .sidebar-tabs button {
+            flex: 1;
+            padding: 12px 8px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+        .sidebar-tabs button:hover { background: var(--bg-light); }
+        .sidebar-tabs button.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
+        .sidebar-content { flex: 1; overflow-y: auto; padding: 15px; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+        #map { flex: 1; background: #1a1a2e; }
+        .sidebar-toggle {
+            position: absolute;
+            left: 350px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1000;
+            background: var(--bg-medium);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 10px 5px;
+            cursor: pointer;
+            border-radius: 0 5px 5px 0;
+            transition: left 0.3s ease;
+        }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-size: 0.85rem; color: var(--text-secondary); }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); }
+        button {
+            padding: 8px 16px;
+            background: var(--primary);
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: opacity 0.2s;
+        }
+        button:hover { opacity: 0.9; }
+        button.secondary { background: var(--bg-light); }
+        button.danger { background: var(--danger); }
+        button.success { background: var(--success); }
+        .layer-item {
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+        .layer-header {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            gap: 10px;
+            cursor: pointer;
+        }
+        .layer-header:hover { background: var(--bg-light); }
+        .layer-color { width: 16px; height: 16px; border-radius: 3px; flex-shrink: 0; }
+        .layer-name { flex: 1; font-size: 0.9rem; }
+        .layer-toggle { background: none; padding: 4px 8px; font-size: 0.8rem; }
+        .marker-item {
+            background: var(--bg-dark);
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            border-left: 3px solid var(--primary);
+        }
+        .marker-item .marker-title { font-weight: 500; margin-bottom: 4px; }
+        .marker-item .marker-coords { font-size: 0.8rem; color: var(--text-secondary); }
+        .rule-category { margin-bottom: 15px; }
+        .rule-category h4 { color: var(--primary); margin-bottom: 8px; font-size: 0.95rem; }
+        .rule-item {
+            background: var(--bg-dark);
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+            border-left: 3px solid var(--success);
+        }
+        .rule-item.likely { border-left-color: var(--warning); }
+        .clue-item { background: var(--bg-dark); padding: 12px; border-radius: 4px; margin-bottom: 10px; }
+        .clue-line { font-style: italic; color: var(--warning); margin-bottom: 6px; }
+        .clue-note { font-size: 0.85rem; color: var(--text-secondary); }
+        footer {
+            background: var(--bg-medium);
+            padding: 8px 20px;
+            border-top: 1px solid var(--border-color);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+        }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .section-header h3 { font-size: 1rem; font-weight: 600; }
+        #distance-result { background: var(--bg-dark); padding: 10px; border-radius: 4px; margin-top: 10px; font-size: 0.9rem; }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .checkbox-group input[type="checkbox"] { width: auto; }
+        .leaflet-popup-content-wrapper { background: var(--bg-medium); color: var(--text-primary); border-radius: 8px; }
+        .leaflet-popup-content { margin: 12px; }
+        .leaflet-popup-tip { background: var(--bg-medium); }
+        .popup-title { font-weight: 600; margin-bottom: 8px; }
+        .popup-note { font-size: 0.9rem; margin-bottom: 8px; }
+        .popup-coords { font-size: 0.8rem; color: var(--text-secondary); }
+        @media (max-width: 768px) {
+            .sidebar { position: absolute; z-index: 1001; height: calc(100% - 120px); top: 60px; }
+            header h1 { font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <header>
+            <div>
+                <h1>BTME Map Explorer</h1>
+                <span class="subtitle">Beyond The Map's Edge - Western US Analysis</span>
+            </div>
+            <div class="header-controls">
+                <input type="text" id="search-input" placeholder="Search locations..." style="width: 200px;">
+                <button onclick="exportData()" class="secondary">Export</button>
+                <button onclick="importData()" class="secondary">Import</button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-tabs">
+                    <button class="active" onclick="showTab('layers', this)">Layers</button>
+                    <button onclick="showTab('markers', this)">Markers</button>
+                    <button onclick="showTab('clues', this)">Clues</button>
+                    <button onclick="showTab('rules', this)">Rules</button>
+                    <button onclick="showTab('tools', this)">Tools</button>
+                </div>
+
+                <div class="sidebar-content">
+                    <!-- Layers Tab -->
+                    <div id="layers-tab" class="tab-panel active">
+                        <div class="section-header">
+                            <h3>Map Layers</h3>
+                        </div>
+                        <div class="form-group">
+                            <label>Quick Add Layer</label>
+                            <select id="layer-type-select">
+                                <option value="">-- Select layer type --</option>
+                                <optgroup label="Reference">
+                                    <option value="states">Western US States</option>
+                                </optgroup>
+                                <optgroup label="Public Lands">
+                                    <option value="national_parks">National Parks</option>
+                                    <option value="wilderness">Wilderness Areas</option>
+                                </optgroup>
+                                <optgroup label="Features">
+                                    <option value="peaks">Mountain Peaks</option>
+                                    <option value="waterfalls">Waterfalls</option>
+                                    <option value="arches">Natural Arches</option>
+                                </optgroup>
+                            </select>
+                            <button onclick="addSelectedLayer()" style="margin-top: 8px; width: 100%;">Add Layer</button>
+                        </div>
+                        <div id="layers-list"></div>
+                    </div>
+
+                    <!-- Markers Tab -->
+                    <div id="markers-tab" class="tab-panel">
+                        <div class="section-header">
+                            <h3>Custom Markers</h3>
+                            <button onclick="enableMarkerMode()">+ Add</button>
+                        </div>
+                        <div class="form-group">
+                            <label>Filter by Category</label>
+                            <select id="marker-filter" onchange="updateMarkersList()">
+                                <option value="all">All Categories</option>
+                                <option value="poi">Points of Interest</option>
+                                <option value="clue">Clue Locations</option>
+                                <option value="eliminated">Eliminated</option>
+                                <option value="searched">Searched</option>
+                            </select>
+                        </div>
+                        <div id="markers-list"><p style="color: var(--text-secondary); font-size: 0.9rem;">Click "+ Add" then click on the map to add a marker.</p></div>
+                    </div>
+
+                    <!-- Clues Tab -->
+                    <div id="clues-tab" class="tab-panel">
+                        <div class="section-header"><h3>Poem Clues</h3></div>
+                        <div id="clues-list">
+                            <div class="clue-item"><div class="clue-line">"As hope surges clear and bright"</div><div class="clue-note">First actionable clue (confirmed)</div></div>
+                            <div class="clue-item"><div class="clue-line">"In ursa east his realm awaits"</div><div class="clue-note">Intentionally not capitalized - refers to bear/Ursa</div></div>
+                            <div class="clue-item"><div class="clue-line">"Double arcs on granite bold"</div><div class="clue-note">Not yet solved - may relate to natural arches</div></div>
+                            <div class="clue-item"><div class="clue-line">"Return her face to find the place"</div><div class="clue-note">"Her face" not far from "the place"</div></div>
+                            <div class="clue-item"><div class="clue-line">"Round the bend, then past the hole"</div><div class="clue-note">Walking distance from "waters' silent flight"</div></div>
+                            <div class="clue-item"><div class="clue-line">"The bride"</div><div class="clue-note">Not a living person</div></div>
+                        </div>
+                        <div class="form-group" style="margin-top: 20px;">
+                            <label>Search Place Names by Keyword</label>
+                            <input type="text" id="clue-search" placeholder="e.g., bear, bride, granite...">
+                            <button onclick="searchByClue()" style="margin-top: 8px; width: 100%;">Search</button>
+                        </div>
+                    </div>
+
+                    <!-- Rules Tab -->
+                    <div id="rules-tab" class="tab-panel">
+                        <div class="section-header"><h3>BTME Rules (JIBLE 5.0)</h3></div>
+                        <div class="rule-category">
+                            <h4>Location Rules</h4>
+                            <div class="rule-item">On publicly accessible land</div>
+                            <div class="rule-item">NOT on private property</div>
+                            <div class="rule-item">Western United States</div>
+                            <div class="rule-item likely">Below 11,000 feet elevation</div>
+                            <div class="rule-item">Not near man-made trails</div>
+                        </div>
+                        <div class="rule-category">
+                            <h4>Eliminate</h4>
+                            <div class="rule-item">NOT near buildings</div>
+                            <div class="rule-item">NOT in caves/mines/tunnels</div>
+                            <div class="rule-item">NOT underwater</div>
+                        </div>
+                        <div class="rule-category">
+                            <h4>Access</h4>
+                            <div class="rule-item">Low-clearance vehicle access</div>
+                            <div class="rule-item">Less than 1 mile hike</div>
+                            <div class="rule-item">24/7 accessible</div>
+                        </div>
+                        <div class="rule-category">
+                            <h4>Stable Land Types</h4>
+                            <div class="rule-item">National Parks</div>
+                            <div class="rule-item">Wilderness Areas</div>
+                        </div>
+                    </div>
+
+                    <!-- Tools Tab -->
+                    <div id="tools-tab" class="tab-panel">
+                        <div class="section-header"><h3>Analysis Tools</h3></div>
+                        <div class="form-group">
+                            <label>Measure Distance</label>
+                            <button onclick="enableDistanceTool()" style="width: 100%;">Start Measuring</button>
+                            <div id="distance-result" style="display: none;"></div>
+                        </div>
+                        <div class="form-group">
+                            <label>Draw Search Area</label>
+                            <button onclick="enableDrawPolygon()" style="width: 100%;">Draw Polygon</button>
+                        </div>
+                        <div class="form-group">
+                            <label>Go to Coordinates</label>
+                            <input type="text" id="goto-coords" placeholder="40.7128, -111.8910">
+                            <button onclick="goToCoords()" style="margin-top: 8px; width: 100%;">Go</button>
+                        </div>
+                        <div class="form-group">
+                            <label>Map Settings</label>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="satellite-view" onchange="toggleSatellite()">
+                                <label for="satellite-view" style="margin: 0;">Satellite view</label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Clear Data</label>
+                            <button onclick="clearAllMarkers()" class="danger" style="width: 100%;">Clear All Markers</button>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <div class="map-container" style="flex: 1; position: relative;">
+                <button class="sidebar-toggle" onclick="toggleSidebar()">◀</button>
+                <div id="map"></div>
+            </div>
+        </div>
+
+        <footer>
+            <span id="status-text">Ready</span>
+            <span id="coords-display">Lat: --, Lng: --</span>
+        </footer>
+    </div>
+
+    <input type="file" id="import-file" style="display: none;" accept=".json" onchange="handleImport(event)">
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+
+    <script>
+        // BTME Map Explorer - Standalone Version
+        console.log('BTME Map Explorer initializing...');
+
+        let map, osmLayer, satelliteLayer, drawnItems;
+        let layers = {};
+        let markers = [];
+        let currentMode = null;
+        let distancePoints = [];
+
+        const WESTERN_US_CENTER = [40.0, -113.5];
+
+        function initMap() {
+            console.log('Initializing map...');
+            map = L.map('map', { center: WESTERN_US_CENTER, zoom: 5, minZoom: 3, maxZoom: 18 });
+
+            osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+
+            satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: '© Esri'
+            });
+
+            drawnItems = new L.FeatureGroup();
+            map.addLayer(drawnItems);
+
+            map.on('mousemove', e => {
+                document.getElementById('coords-display').textContent = `Lat: ${e.latlng.lat.toFixed(5)}, Lng: ${e.latlng.lng.toFixed(5)}`;
+            });
+
+            map.on('click', handleMapClick);
+            map.on(L.Draw.Event.CREATED, e => drawnItems.addLayer(e.layer));
+
+            loadSavedData();
+            updateStatus('Map ready');
+            console.log('Map initialized');
+        }
+
+        function showTab(tabName, btn) {
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.sidebar-tabs button').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabName + '-tab').classList.add('active');
+            btn.classList.add('active');
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const toggle = document.querySelector('.sidebar-toggle');
+            sidebar.classList.toggle('collapsed');
+            toggle.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
+            toggle.style.left = sidebar.classList.contains('collapsed') ? '0' : '350px';
+            setTimeout(() => map.invalidateSize(), 300);
+        }
+
+        async function addSelectedLayer() {
+            const type = document.getElementById('layer-type-select').value;
+            if (!type) return alert('Select a layer type');
+            updateStatus('Loading ' + type + '...');
+            try {
+                const data = await loadLayerData(type);
+                addLayerToMap(type, data);
+                updateStatus(type + ' loaded');
+            } catch (e) {
+                console.error(e);
+                updateStatus('Error: ' + e.message);
+            }
+            document.getElementById('layer-type-select').value = '';
+        }
+
+        async function loadLayerData(type) {
+            if (type === 'states') {
+                const res = await fetch('https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json');
+                const data = await res.json();
+                const western = ['Washington', 'Oregon', 'California', 'Idaho', 'Nevada', 'Montana', 'Wyoming', 'Utah', 'Colorado', 'Arizona', 'New Mexico'];
+                data.features = data.features.filter(f => western.includes(f.properties.name));
+                return data;
+            }
+            return createSampleData(type);
+        }
+
+        function createSampleData(type) {
+            const parks = [
+                { name: 'Yellowstone', lat: 44.428, lng: -110.588 },
+                { name: 'Grand Teton', lat: 43.790, lng: -110.682 },
+                { name: 'Glacier', lat: 48.759, lng: -113.787 },
+                { name: 'Zion', lat: 37.298, lng: -113.026 },
+                { name: 'Arches', lat: 38.733, lng: -109.592 },
+                { name: 'Grand Canyon', lat: 36.107, lng: -112.113 },
+                { name: 'Rocky Mountain', lat: 40.343, lng: -105.684 },
+                { name: 'Yosemite', lat: 37.865, lng: -119.538 },
+            ];
+            const configs = {
+                national_parks: { data: parks, color: '#22c55e' },
+                wilderness: { count: 25, color: '#16a34a' },
+                peaks: { count: 30, color: '#8b5cf6' },
+                waterfalls: { count: 20, color: '#0ea5e9' },
+                arches: { count: 15, color: '#f97316' }
+            };
+            const cfg = configs[type] || { count: 20, color: '#888' };
+
+            if (cfg.data) {
+                return {
+                    type: 'FeatureCollection',
+                    features: cfg.data.map((p, i) => ({
+                        type: 'Feature',
+                        properties: { name: p.name, type: type, id: i },
+                        geometry: { type: 'Point', coordinates: [p.lng, p.lat] }
+                    }))
+                };
+            }
+
+            const features = [];
+            for (let i = 0; i < cfg.count; i++) {
+                features.push({
+                    type: 'Feature',
+                    properties: { name: `${type} ${i+1}`, type: type, id: i },
+                    geometry: { type: 'Point', coordinates: [-124 + Math.random()*21, 32 + Math.random()*16] }
+                });
+            }
+            return { type: 'FeatureCollection', features };
+        }
+
+        function addLayerToMap(id, data) {
+            if (layers[id]) map.removeLayer(layers[id].layer);
+            const colors = { states: '#3b82f6', national_parks: '#22c55e', wilderness: '#16a34a', peaks: '#8b5cf6', waterfalls: '#0ea5e9', arches: '#f97316' };
+            const color = colors[id] || '#888';
+
+            const layer = L.geoJSON(data, {
+                style: { color, weight: 2, fillColor: color, fillOpacity: 0.3 },
+                pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 6, fillColor: color, color: '#fff', weight: 1, fillOpacity: 0.8 }),
+                onEachFeature: (f, l) => {
+                    const name = f.properties.name || f.properties.NAME || 'Unknown';
+                    l.bindPopup(`<div class="popup-title">${name}</div>`);
+                    l.bindTooltip(name);
+                }
+            }).addTo(map);
+
+            layers[id] = { layer, data, color, visible: true };
+            updateLayersList();
+            saveData();
+        }
+
+        function updateLayersList() {
+            const list = document.getElementById('layers-list');
+            list.innerHTML = Object.entries(layers).map(([id, info]) => `
+                <div class="layer-item">
+                    <div class="layer-header">
+                        <div class="layer-color" style="background: ${info.color}"></div>
+                        <span class="layer-name">${id}</span>
+                        <button class="layer-toggle" onclick="toggleLayer('${id}')">${info.visible ? 'Hide' : 'Show'}</button>
+                        <button class="layer-toggle danger" onclick="removeLayer('${id}')">×</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleLayer(id) {
+            if (!layers[id]) return;
+            layers[id].visible ? map.removeLayer(layers[id].layer) : map.addLayer(layers[id].layer);
+            layers[id].visible = !layers[id].visible;
+            updateLayersList();
+        }
+
+        function removeLayer(id) {
+            if (!layers[id]) return;
+            map.removeLayer(layers[id].layer);
+            delete layers[id];
+            updateLayersList();
+            saveData();
+        }
+
+        function enableMarkerMode() {
+            currentMode = 'marker';
+            updateStatus('Click on map to add marker');
+            map.getContainer().style.cursor = 'crosshair';
+        }
+
+        function handleMapClick(e) {
+            if (currentMode === 'marker') {
+                addMarker(e.latlng);
+                currentMode = null;
+                map.getContainer().style.cursor = '';
+            } else if (currentMode === 'distance') {
+                addDistancePoint(e.latlng);
+            }
+        }
+
+        function addMarker(latlng, title, note, category) {
+            title = title || prompt('Marker name:', 'New marker');
+            if (!title) return;
+            note = note || prompt('Notes (optional):', '') || '';
+            category = category || 'poi';
+
+            const colors = { poi: '#3b82f6', clue: '#f59e0b', eliminated: '#ef4444', searched: '#22c55e' };
+            const marker = L.circleMarker(latlng, { radius: 8, fillColor: colors[category], color: '#fff', weight: 2, fillOpacity: 0.9 }).addTo(map);
+
+            const idx = markers.length;
+            marker.bindPopup(`
+                <div class="popup-title">${title}</div>
+                ${note ? `<div class="popup-note">${note}</div>` : ''}
+                <div class="popup-coords">${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}</div>
+                <button onclick="deleteMarker(${idx})" class="danger" style="margin-top:8px">Delete</button>
+            `);
+
+            markers.push({ id: idx, title, note, category, lat: latlng.lat, lng: latlng.lng, marker });
+            updateMarkersList();
+            saveData();
+            updateStatus('Marker added: ' + title);
+        }
+
+        function updateMarkersList() {
+            const filter = document.getElementById('marker-filter').value;
+            const filtered = filter === 'all' ? markers : markers.filter(m => m.category === filter);
+
+            document.getElementById('markers-list').innerHTML = filtered.length ? filtered.map(m => `
+                <div class="marker-item" onclick="panToMarker(${m.id})" style="cursor:pointer">
+                    <div class="marker-title">${m.title}</div>
+                    <div class="marker-coords">${m.lat.toFixed(4)}, ${m.lng.toFixed(4)}</div>
+                </div>
+            `).join('') : '<p style="color:var(--text-secondary);font-size:0.9rem">No markers.</p>';
+        }
+
+        function panToMarker(id) {
+            const m = markers.find(x => x.id === id);
+            if (m) { map.setView([m.lat, m.lng], 12); m.marker.openPopup(); }
+        }
+
+        function deleteMarker(id) {
+            const idx = markers.findIndex(m => m.id === id);
+            if (idx !== -1) { map.removeLayer(markers[idx].marker); markers.splice(idx, 1); updateMarkersList(); saveData(); }
+        }
+
+        function clearAllMarkers() {
+            if (!confirm('Delete all markers?')) return;
+            markers.forEach(m => map.removeLayer(m.marker));
+            markers = [];
+            updateMarkersList();
+            saveData();
+        }
+
+        function enableDistanceTool() {
+            currentMode = 'distance';
+            distancePoints = [];
+            updateStatus('Click two points to measure');
+            map.getContainer().style.cursor = 'crosshair';
+        }
+
+        function addDistancePoint(latlng) {
+            distancePoints.push(latlng);
+            L.circleMarker(latlng, { radius: 5, fillColor: '#f59e0b', color: '#fff', weight: 2, fillOpacity: 1 }).addTo(map);
+
+            if (distancePoints.length === 2) {
+                const dist = distancePoints[0].distanceTo(distancePoints[1]);
+                const miles = (dist / 1609.34).toFixed(2);
+                L.polyline(distancePoints, { color: '#f59e0b', weight: 2, dashArray: '5,10' }).addTo(map);
+                document.getElementById('distance-result').style.display = 'block';
+                document.getElementById('distance-result').innerHTML = `<strong>Distance:</strong> ${miles} miles`;
+                currentMode = null;
+                map.getContainer().style.cursor = '';
+            }
+        }
+
+        function enableDrawPolygon() {
+            new L.Draw.Polygon(map, { shapeOptions: { color: '#3b82f6', fillOpacity: 0.2 } }).enable();
+            updateStatus('Click to draw polygon');
+        }
+
+        function goToCoords() {
+            const parts = document.getElementById('goto-coords').value.split(',').map(s => parseFloat(s.trim()));
+            if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                map.setView(parts, 12);
+                L.marker(parts).addTo(map).bindPopup(`${parts[0].toFixed(5)}, ${parts[1].toFixed(5)}`).openPopup();
+            } else {
+                alert('Invalid format. Use: lat, lng');
+            }
+        }
+
+        function toggleSatellite() {
+            document.getElementById('satellite-view').checked ? (map.removeLayer(osmLayer), map.addLayer(satelliteLayer)) : (map.removeLayer(satelliteLayer), map.addLayer(osmLayer));
+        }
+
+        function searchByClue() {
+            const kw = document.getElementById('clue-search').value.trim();
+            if (!kw) return alert('Enter a keyword');
+            updateStatus('Searching...');
+            const results = [];
+            Object.values(layers).forEach(l => {
+                l.data?.features?.forEach(f => {
+                    const name = (f.properties.name || '').toLowerCase();
+                    if (name.includes(kw.toLowerCase())) results.push({ name: f.properties.name, coords: f.geometry.coordinates });
+                });
+            });
+            if (results.length) {
+                results.slice(0, 10).forEach(r => addMarker(L.latLng(r.coords[1], r.coords[0]), r.name, `Search: ${kw}`, 'clue'));
+                updateStatus(`Found ${results.length} results`);
+            } else {
+                alert('No results for "' + kw + '"');
+                updateStatus('No results');
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('btme-data', JSON.stringify({
+                markers: markers.map(m => ({ title: m.title, note: m.note, category: m.category, lat: m.lat, lng: m.lng })),
+                mapState: { center: map.getCenter(), zoom: map.getZoom() }
+            }));
+        }
+
+        function loadSavedData() {
+            const saved = localStorage.getItem('btme-data');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    data.markers?.forEach(m => addMarker(L.latLng(m.lat, m.lng), m.title, m.note, m.category));
+                    if (data.mapState) map.setView(data.mapState.center, data.mapState.zoom);
+                } catch (e) { console.error(e); }
+            }
+        }
+
+        function exportData() {
+            const blob = new Blob([JSON.stringify({ markers: markers.map(m => ({ title: m.title, note: m.note, category: m.category, lat: m.lat, lng: m.lng })), exportDate: new Date().toISOString() }, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'btme-' + new Date().toISOString().split('T')[0] + '.json'; a.click();
+        }
+
+        function importData() { document.getElementById('import-file').click(); }
+
+        function handleImport(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = ev => {
+                try {
+                    const data = JSON.parse(ev.target.result);
+                    data.markers?.forEach(m => addMarker(L.latLng(m.lat, m.lng), m.title, m.note, m.category));
+                    updateStatus('Imported ' + (data.markers?.length || 0) + ' markers');
+                } catch (err) { alert('Error: ' + err.message); }
+            };
+            reader.readAsText(file);
+        }
+
+        function updateStatus(text) { document.getElementById('status-text').textContent = text; console.log('[Status]', text); }
+
+        document.addEventListener('DOMContentLoaded', initMap);
+        document.getElementById('search-input').addEventListener('keypress', e => {
+            if (e.key === 'Enter') {
+                const q = e.target.value.trim().toLowerCase();
+                const found = markers.find(m => m.title.toLowerCase().includes(q));
+                found ? panToMarker(found.id) : alert('No markers match "' + q + '"');
+            }
+        });
+    </script>
+</body>
+</html>
