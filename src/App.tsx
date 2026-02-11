@@ -5,10 +5,11 @@ import { BTMEFiltersPanel } from './components/BTMEFiltersPanel';
 import { SearchAreaPanel } from './components/SearchAreaPanel';
 import { ClueTrackerPanel } from './components/ClueTrackerPanel';
 import { GeometryToolsPanel } from './components/GeometryToolsPanel';
+import { SolverPanel } from './components/SolverPanel';
 import { SearchPanel } from './components/SearchPanel';
 import './App.css';
 
-type SidebarTab = 'layers' | 'filters' | 'geometry' | 'clues' | 'search';
+type SidebarTab = 'layers' | 'filters' | 'geometry' | 'clues' | 'search' | 'solver';
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -54,6 +55,13 @@ function App() {
               Clues
             </button>
             <button
+              className={activeTab === 'solver' ? 'active' : ''}
+              onClick={() => setActiveTab('solver')}
+              title="Auto-solve treasure hunt"
+            >
+              Solve
+            </button>
+            <button
               className={activeTab === 'search' ? 'active' : ''}
               onClick={() => setActiveTab('search')}
               title="Track searched areas"
@@ -67,6 +75,7 @@ function App() {
             {activeTab === 'filters' && <BTMEFiltersPanel />}
             {activeTab === 'geometry' && <GeometryToolsPanel />}
             {activeTab === 'clues' && <ClueTrackerPanel />}
+            {activeTab === 'solver' && <SolverPanel />}
             {activeTab === 'search' && <SearchAreaPanel />}
           </div>
 

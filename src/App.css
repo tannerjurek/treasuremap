@@ -1931,3 +1931,215 @@
 .clue-tracker-panel .celestial-list strong {
   color: #06b6d4;
 }
+
+/* ================================
+   Solver Panel
+   ================================ */
+
+.solver-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.solver-panel h3 {
+  font-size: 1rem;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.solver-panel h4 {
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem;
+  color: var(--text-primary);
+}
+
+.solver-panel .section-description {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 0.25rem 0 0;
+  line-height: 1.4;
+}
+
+/* Progress bar */
+.solver-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.progress-bar {
+  height: 6px;
+  background: var(--bg-dark);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--primary-color);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.progress-text strong {
+  color: var(--primary-color);
+}
+
+/* Results list */
+.solver-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.solver-result-item {
+  background: var(--bg-dark);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.solver-result-item:hover {
+  border-color: var(--primary-color);
+}
+
+.solver-result-item.expanded {
+  border-color: var(--primary-color);
+}
+
+.result-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  cursor: pointer;
+}
+
+.result-rank {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--primary-color);
+  min-width: 28px;
+}
+
+.result-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.result-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.result-meta {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.result-score {
+  font-weight: 700;
+  font-size: 1.1rem;
+  min-width: 30px;
+  text-align: right;
+}
+
+/* Expanded details */
+.result-details {
+  padding: 0 0.6rem 0.6rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.score-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  background: var(--bg-medium);
+  border-radius: 4px;
+}
+
+.score-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.score-row span:last-child {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.clues-covered {
+  font-size: 0.8rem;
+  margin: 0.5rem 0;
+}
+
+.clue-badge {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  margin: 0.1rem;
+  background: var(--bg-light);
+  border-radius: 3px;
+  font-size: 0.7rem;
+  color: var(--primary-color);
+  text-transform: capitalize;
+}
+
+.sample-matches {
+  font-size: 0.8rem;
+  margin: 0.5rem 0;
+}
+
+.sample-matches ul {
+  margin: 0.25rem 0 0;
+  padding-left: 1rem;
+}
+
+.sample-matches li {
+  margin-bottom: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.match-clue {
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.match-type {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+}
+
+.more-matches {
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+/* Methodology list */
+.solver-method-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.solver-method-list li {
+  margin-bottom: 0.4rem;
+}
